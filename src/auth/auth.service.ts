@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-
+import * as crypto from 'crypto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -27,7 +28,10 @@ export class AuthService {
   }
   //save hashed refresh token in database
   async saveRefreshToken(userId: string, refreshToken: string) {
-    const hashed = await bcrypt.hash(refreshToken, 10);
+    const hashed = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
   
     await this.prisma.user.update({
       where: { id: userId },
@@ -61,5 +65,49 @@ export class AuthService {
       refresh_token: tokens.refreshToken,
       user,
     };
+  }
+  async refreshTokens(refreshToken: string, res: Response) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token');
+    }
+  
+    const payload = this.jwtService.verify(refreshToken, {
+      secret: process.env.JWT_REFRESH_SECRET,
+    });
+  
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+  
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException('Access denied');
+    }
+  
+    const incomingHash = crypto
+      .createHash('sha256')
+      .update(refreshToken)
+      .digest('hex');
+  
+    if (incomingHash !== user.refreshToken) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  
+    const tokens = await this.generateTokens(user.id, user.email);
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
+  
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+  
+    return tokens;
   }
 }
