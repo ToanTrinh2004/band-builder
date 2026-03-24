@@ -6,14 +6,159 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
-  id          String   @id @default(uuid())
-  googleId    String?  @unique
-  email       String   @unique
-  name        String?
-  avatarUrl   String?
+// ============================================================
+// AUTH & USER
+// ============================================================
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model User {
+  id           String   @id @default(uuid())
+  googleId     String?  @unique
+  email        String   @unique
+  name         String?
+  avatarUrl    String?
   refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tests        Test[]
+
+  @@map("users")
+}
+
+// ============================================================
+// SKILL CONTENT
+// ============================================================
+
+model SkillType {
+  id   Int    @id @default(autoincrement())
+  name String @unique // "Listening" | "Reading" | "Writing" | "Speaking"
+
+  skillContents SkillContent[]
+  skillTests    SkillTest[]
+
+  @@map("skill_types")
+}
+
+model SkillContent {
+  id          String   @id @default(uuid())
+  skillTypeId Int
+  contentJson Json
+  audioUrl    String?
+  source      String
+  createdAt   DateTime @default(now())
+
+  skillType  SkillType   @relation(fields: [skillTypeId], references: [id])
+  skillTests SkillTest[]
+
+  @@map("skill_contents")
+}
+
+model SkillTest {
+  id             String @id @default(uuid())
+  skillContentId String
+  skillTypeId    Int
+  numberOfVisits Int    @default(0)
+
+  skillContent       SkillContent        @relation(fields: [skillContentId], references: [id])
+  skillType          SkillType           @relation(fields: [skillTypeId], references: [id])
+  practiceTestSkills PracticeTestSkill[]
+  skillAttempts      TestSkillAttempt[]
+
+  @@map("skill_tests")
+}
+
+// ============================================================
+// PRACTICE TESTS
+// ============================================================
+
+model PracticeTest {
+  id    String @id @default(uuid())
+  title String
+
+  practiceTestSkills PracticeTestSkill[]
+  tests              Test[]
+
+  @@map("practice_tests")
+}
+
+model PracticeTestSkill {
+  id             String @id @default(uuid())
+  practiceTestId String
+  skillTestId    String
+
+  practiceTest PracticeTest @relation(fields: [practiceTestId], references: [id])
+  skillTest    SkillTest    @relation(fields: [skillTestId], references: [id])
+
+  @@unique([practiceTestId, skillTestId])
+  @@map("practice_test_skills")
+}
+
+// ============================================================
+// TESTS — user session
+// ============================================================
+
+model Test {
+  id             String     @id @default(uuid())
+  userId         String
+  practiceTestId String
+  status         TestStatus @default(IN_PROGRESS)
+  totalScore     Float?
+  maxScore       Float?
+  startedAt      DateTime   @default(now())
+  completedAt    DateTime?
+  updatedAt      DateTime   @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id])
+  practiceTest  PracticeTest       @relation(fields: [practiceTestId], references: [id])
+  skillAttempts TestSkillAttempt[]
+
+  @@map("tests")
+}
+
+enum TestStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+// ============================================================
+// TEST SKILL ATTEMPTS — per skill result
+// ============================================================
+
+model TestSkillAttempt {
+  id           String    @id @default(uuid())
+  testId       String
+  skillTestId  String
+  score        Float?
+  maxScore     Float?
+  bandScore    Float?
+  timeSpentSec Int?
+  submittedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  test      Test         @relation(fields: [testId], references: [id])
+  skillTest SkillTest    @relation(fields: [skillTestId], references: [id])
+  answers   TestAnswer[]
+
+  @@unique([testId, skillTestId])
+  @@map("test_skill_attempts")
+}
+
+// ============================================================
+// TEST ANSWERS — per question tracking
+// ============================================================
+
+model TestAnswer {
+  id            String   @id @default(uuid())
+  attemptId     String
+  questionId    String   // e.g. "L1Q1", "R2Q16" — matches id in contentJson
+  userAnswer    String?
+  correctAnswer String?
+  isCorrect     Boolean?
+  timeSpentSec  Int?
+  createdAt     DateTime @default(now())
+
+  attempt TestSkillAttempt @relation(fields: [attemptId], references: [id])
+
+  @@map("test_answers")
 }
