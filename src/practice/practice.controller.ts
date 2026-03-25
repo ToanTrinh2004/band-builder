@@ -54,22 +54,22 @@ export class PracticeController {
   getPracticeTestPreview(@Param('practiceTestId') practiceTestId: string) {
     return this.practiceService.getPracticeTestPreview(practiceTestId);
   }
-
+  
   @Get('skills/:skillContentId/preview')
   getSkillPreview(@Param('skillContentId') skillContentId: string) {
     return this.practiceService.getSkillContent(skillContentId);
   }
   // ── Protected routes (JWT required) ─────────────────────────────────────
-
+ 
   @UseGuards(JwtAuthGuard)
-  @Post(':practiceTestId/start')
+  @Post('tests/:practiceTestId/start')
   @HttpCode(HttpStatus.CREATED)
   startTest(@Param('practiceTestId') practiceTestId: string, @Req() req: Request) {
     return this.practiceService.startTest(practiceTestId, req.user!.userId);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':testId/skills/:skillType/start')
+  @Post('tests/:testId/skills/:skillType/start')
   @HttpCode(HttpStatus.CREATED)
   startSkillAttempt(
     @Param('testId') testId: string,
@@ -80,7 +80,7 @@ export class PracticeController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':testId/skills/:skillType/submit')
+  @Post('tests/:testId/skills/:skillType/submit')
   @HttpCode(HttpStatus.OK)
   submitSkill(
     @Param('testId') testId: string,
