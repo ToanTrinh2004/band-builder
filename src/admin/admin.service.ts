@@ -1,26 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import { CreateAdminDto } from './dto/create-admin.dto';
-import { UpdateAdminDto } from './dto/update-admin.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class AdminService {
-  create(createAdminDto: CreateAdminDto) {
-    return 'This action adds a new admin';
+  constructor(private cloudinaryService: CloudinaryService) {}
+
+  // 📸 Upload Image
+  async uploadImage(file: Express.Multer.File) {
+    const result: any = await this.cloudinaryService.uploadFile(file);
+
+    return {
+      url: result.secure_url,
+      public_id: result.public_id,
+      type: 'image',
+    };
   }
 
-  findAll() {
-    return `This action returns all admin`;
-  }
+  // 🎤 Upload Audio
+  async uploadAudio(file: Express.Multer.File) {
+    const result: any = await this.cloudinaryService.uploadFile(file, {
+      resource_type: 'video', // important for audio/video
+      folder: 'audio',
+    });
 
-  findOne(id: number) {
-    return `This action returns a #${id} admin`;
-  }
-
-  update(id: number, updateAdminDto: UpdateAdminDto) {
-    return `This action updates a #${id} admin`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} admin`;
+    return {
+      url: result.secure_url,
+      public_id: result.public_id,
+      type: 'audio',
+    };
   }
 }
