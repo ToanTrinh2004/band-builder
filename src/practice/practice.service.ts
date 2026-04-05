@@ -319,9 +319,7 @@ export class PracticeService {
  
   
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // PRIVATE HELPERS
-  // ══════════════════════════════════════════════════════════════════════════
+
 
   private resolveSkillTypeId(skillType: SkillTypeName): number {
     const id = SKILL_TYPE_MAP[skillType];
