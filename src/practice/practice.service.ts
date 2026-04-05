@@ -179,6 +179,7 @@ export class PracticeService {
     }
   }
 
+  // listening and reading are auto-scored based on correct answers in content JSON
   async submitSkill(testId: string, skillType: SkillTypeName, dto: SubmitSkillDto, userId: string) {
     // convert skill type name to id for querying (ex: listening => 1)
     const skillTypeId = this.resolveSkillTypeId(skillType);
@@ -314,6 +315,8 @@ export class PracticeService {
       totalQuestions: isAutoScored ? totalGradeable : undefined,
     };
   }
+  // submit writing skill
+ 
   
 
   // ══════════════════════════════════════════════════════════════════════════
