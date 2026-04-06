@@ -164,49 +164,61 @@ model TestAnswer {
 
 model WritingEvaluation {
   id         String   @id @default(uuid())
-  attemptId  String   @unique  // 1-to-1 with TestSkillAttempt
+  attemptId  String   @unique
   createdAt  DateTime @default(now())
 
-  // Overall combined band (Task1 × 1/3 + Task2 × 2/3)
   overallBand Float
 
-  // Task 1 — band scores
-  task1Band                Float
-  task1TaskAchievement     Float
-  task1CoherenceCohesion   Float
-  task1LexicalResource     Float
-  task1GrammaticalRange    Float
+  // Task 1
+  task1Band                      Float
+  task1TaskAchievement           Float
+  task1TaskAchievementRationale  String
+  task1TaskAchievementExamples   String
+  task1TaskAchievementSuggestions String
+  task1CoherenceCohesion         Float
+  task1CoherenceCohesionRationale  String
+  task1CoherenceCohesionExamples   String
+  task1CoherenceCohesionSuggestions String
+  task1LexicalResource           Float
+  task1LexicalResourceRationale  String
+  task1LexicalResourceExamples   String
+  task1LexicalResourceSuggestions String
+  task1GrammaticalRange          Float
+  task1GrammaticalRangeRationale  String
+  task1GrammaticalRangeExamples   String
+  task1GrammaticalRangeSuggestions String
+  task1ImageFeedback             Json?     // nullable — only if image was provided
+  task1OverallFeedback           String
+  task1KeyStrengths              String[]
+  task1KeyWeaknesses             String[]
+  task1PriorityImprovements      String[]
+  task1Essay                     String
+  task1WordCount                 Int
 
-  // Task 1 — feedback
-  task1TaskAchievementFb   String
-  task1CoherenceCohesionFb String
-  task1LexicalResourceFb   String
-  task1GrammaticalRangeFb  String
-
-  // Task 1 — student essay (store for later review)
-  task1Essay               String
-  task1WordCount           Int
-
-  // Task 2 — band scores
-  task2Band                Float
-  task2TaskAchievement     Float
-  task2CoherenceCohesion   Float
-  task2LexicalResource     Float
-  task2GrammaticalRange    Float
-
-  // Task 2 — feedback
-  task2TaskAchievementFb   String
-  task2CoherenceCohesionFb String
-  task2LexicalResourceFb   String
-  task2GrammaticalRangeFb  String
-
-  // Task 2 — student essay
-  task2Essay               String
-  task2WordCount           Int
-
-  // Improvement suggestions (array of strings)
-  task1Improvements        String[]
-  task2Improvements        String[]
+  // Task 2
+  task2Band                      Float
+  task2TaskResponse              Float
+  task2TaskResponseRationale     String
+  task2TaskResponseExamples      String
+  task2TaskResponseSuggestions   String
+  task2CoherenceCohesion         Float
+  task2CoherenceCohesionRationale  String
+  task2CoherenceCohesionExamples   String
+  task2CoherenceCohesionSuggestions String
+  task2LexicalResource           Float
+  task2LexicalResourceRationale  String
+  task2LexicalResourceExamples   String
+  task2LexicalResourceSuggestions String
+  task2GrammaticalRange          Float
+  task2GrammaticalRangeRationale  String
+  task2GrammaticalRangeExamples   String
+  task2GrammaticalRangeSuggestions String
+  task2OverallFeedback           String
+  task2KeyStrengths              String[]
+  task2KeyWeaknesses             String[]
+  task2PriorityImprovements      String[]
+  task2Essay                     String
+  task2WordCount                 Int
 
   attempt TestSkillAttempt @relation(fields: [attemptId], references: [id])
 

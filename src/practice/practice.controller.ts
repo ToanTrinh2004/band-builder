@@ -39,8 +39,6 @@ const SkillTypePipe = new ParseEnumPipe(
 export class PracticeController {
   constructor(private readonly practiceService: PracticeService) {}
 
-  // ── Public routes — skip throttle (read-only, no auth, cheap) ───────────
-
   @SkipThrottle()
   @Get('tests')
   getAllPracticeTests(@Query() query: PaginationQueryDto) {
@@ -113,4 +111,5 @@ export class PracticeController {
   getTestContent(@Param('testId') testId: string, @Req() req: Request) {
     return this.practiceService.getTestContent(testId, req.user!.userId);
   }
+
 }

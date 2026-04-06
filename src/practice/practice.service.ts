@@ -7,6 +7,8 @@ import {
   InternalServerErrorException,
   HttpException,
 } from '@nestjs/common';
+import { Anthropic } from '@anthropic-ai/sdk';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   SubmitSkillDto,
@@ -16,42 +18,39 @@ import {
   ContentJson,
   QuestionEntry,
   GetSkillsQueryDto,
+  PaginationQueryDto,
 } from './dto/practice.dto';
-import { Prisma } from '@prisma/client';
-
+import { IELTSScore } from './types/writing.type';
+import { IELTS_SYSTEM_PROMPT } from './types/writing.promt'; 
 
 @Injectable()
 export class PracticeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // CREATE TEST SESSION
+  // ================================================================
+  // TEST SESSION
+  // ================================================================
+
   async startTest(practiceTestId: string, userId: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // check practice test exists
         const practiceTest = await tx.practiceTest.findUnique({
           where: { id: practiceTestId },
         });
-        if (!practiceTest) {
-          throw new NotFoundException(`PracticeTest '${practiceTestId}' not found`);
-        }
-  
-        // check user exists
+        if (!practiceTest) throw new NotFoundException(`PracticeTest not found`);
+
         const user = await tx.user.findUnique({ where: { id: userId } });
-        if (!user) {
-          throw new NotFoundException(`User '${userId}' not found`);
-        }
-  
-        // check if user already has an in-progress test for this practice test
+        if (!user) throw new NotFoundException(`User not found`);
+
         const existing = await tx.test.findFirst({
           where: { userId, practiceTestId, status: 'IN_PROGRESS' },
         });
         if (existing) {
           throw new ConflictException(
-            `User already has an in-progress test (testId: ${existing.id})`,
+            `You already have an in-progress test (testId: ${existing.id})`,
           );
         }
-        // create the test
+
         const test = await tx.test.create({
           data: { userId, practiceTestId, status: 'IN_PROGRESS' },
           select: {
@@ -61,34 +60,30 @@ export class PracticeService {
             practiceTest: { select: { title: true } },
           },
         });
-  
+
         return {
-          testId: test.id,
-          status: test.status,
-          startedAt: test.startedAt,
+          testId:       test.id,
+          status:       test.status,
+          startedAt:    test.startedAt,
           practiceTest: test.practiceTest.title,
         };
       });
     } catch (error) {
-      // re-throw NestJS HTTP exceptions as-is
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      // P2002 = unique constraint violation (race condition fallback)
-      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002') {
-        throw new ConflictException('User already has an in-progress test');
+      if (error instanceof HttpException) throw error;
+      if ((error as any)?.code === 'P2002') {
+        throw new ConflictException('You already have an in-progress test');
       }
       throw new InternalServerErrorException('Failed to start test');
     }
   }
 
-  
+  // ================================================================
+  // SKILL ATTEMPTS
+  // ================================================================
+
   async startSkillAttempt(testId: string, skillType: SkillTypeName, userId: string) {
-    // convert skill type name to id for querying (ex: listening => 1)
     const skillTypeId = this.resolveSkillTypeId(skillType);
-  
-    // fetch test with full nested data needed for validation
-    // includes practiceTestSkills to verify skill type exists in this test
+
     const test = await this.prisma.test.findUnique({
       where: { id: testId },
       include: {
@@ -99,92 +94,71 @@ export class PracticeService {
         },
       },
     });
-  
-    // validate test exists
-    if (!test) throw new NotFoundException(`Test '${testId}' not found`);
-    // validate test belongs to the requesting user
+
+    if (!test) throw new NotFoundException(`Test not found`);
     if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
-    // validate test is still in progress (not completed or cancelled)
-    if (test.status !== 'IN_PROGRESS') {
-      throw new BadRequestException(`Test is already ${test.status}`);
-    }
-  
-    // find the matching skill in this practice test by skillTypeId
-    // (pure JS — no extra DB query, uses already-loaded include data)
-    const practiceTestSkill = test.practiceTest.practiceTestSkills.find(
+    if (test.status !== 'IN_PROGRESS') throw new BadRequestException(`Test is already ${test.status}`);
+
+    const matchedSkill = test.practiceTest.practiceTestSkills.find(
       (pts) => pts.skillTest.skillTypeId === skillTypeId,
     );
-    // if skill type not found in this practice test, throw 404
-    if (!practiceTestSkill) {
-      throw new NotFoundException(`No '${skillType}' skill found in this practice test`);
-    }
-  
-    // extract skillTestId to use in attempt lookup and creation
-    const skillTestId = practiceTestSkill.skillTestId;
-  
-    // check if an attempt already exists for this test + skill combination
+    if (!matchedSkill) throw new NotFoundException(`No '${skillType}' skill found in this test`);
+
+    const { skillTestId } = matchedSkill;
+
     const existingAttempt = await this.prisma.testSkillAttempt.findUnique({
       where: { testId_skillTestId: { testId, skillTestId } },
     });
-  
+
     if (existingAttempt) {
-      // if already submitted, block re-attempt
       if (existingAttempt.submittedAt) {
-        throw new ConflictException(`'${skillType}' has already been submitted for this test`);
+        throw new ConflictException(`'${skillType}' has already been submitted`);
       }
-      // if started but not submitted, return existing attempt (idempotent)
+      // already started but not submitted — return it as-is (idempotent)
       return {
-        message: 'Skill attempt already started',
+        message:   'Skill attempt already started',
         attemptId: existingAttempt.id,
         skillType,
         startedAt: existingAttempt.createdAt,
       };
     }
-  
+
     try {
-      // wrap both writes in a transaction so they succeed or fail together
-      // prevents visit count incrementing without an attempt being created
       const attempt = await this.prisma.$transaction(async (tx) => {
-        // increment visit count on the skill test for analytics
         await tx.skillTest.update({
           where: { id: skillTestId },
-          data: { numberOfVisits: { increment: 1 } },
+          data:  { numberOfVisits: { increment: 1 } },
         });
-  
-        // create the new skill attempt record
+
         return tx.testSkillAttempt.create({
-          data: { testId, skillTestId },
+          data:   { testId, skillTestId },
           select: { id: true, createdAt: true },
         });
       });
-  
-      // return clean response shape to the controller
+
       return {
-        message: 'Skill attempt started',
-        attemptId: attempt.id,
+        message:        'Skill attempt started',
+        attemptId:      attempt.id,
         skillType,
         skillTestId,
-        skillContentId: practiceTestSkill.skillTest.skillContentId,
-        startedAt: attempt.createdAt,
+        skillContentId: matchedSkill.skillTest.skillContentId,
+        startedAt:      attempt.createdAt,
       };
     } catch (error) {
-      // re-throw NestJS HTTP exceptions so they aren't swallowed as 500
       if (error instanceof HttpException) throw error;
-      // P2002 = unique constraint violation (race condition between findUnique and create)
-      if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2002') {
+      if ((error as any)?.code === 'P2002') {
         throw new ConflictException(`'${skillType}' skill attempt already exists`);
       }
-      // catch-all for unexpected DB or runtime errors
       throw new InternalServerErrorException('Failed to start skill attempt');
     }
   }
 
-  // listening and reading are auto-scored based on correct answers in content JSON
   async submitSkill(testId: string, skillType: SkillTypeName, dto: SubmitSkillDto, userId: string) {
-    // convert skill type name to id for querying (ex: listening => 1)
+    // writing has its own Claude-based flow
+    if (skillType === 'writing') return this.submitWriting(testId, dto, userId);
+
     const skillTypeId = this.resolveSkillTypeId(skillType);
-  
-    // fetch test with full nested data needed for validation and scoring
+
     const test = await this.prisma.test.findUnique({
       where: { id: testId },
       include: {
@@ -199,25 +173,18 @@ export class PracticeService {
         },
       },
     });
-  
-    // validate test exists, belongs to user, and is still in progress
-    if (!test) throw new NotFoundException(`Test '${testId}' not found`);
+
+    if (!test) throw new NotFoundException(`Test not found`);
     if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
-    if (test.status !== 'IN_PROGRESS') {
-      throw new BadRequestException(`Test is already ${test.status}`);
-    }
-  
-    // find matching skill type in this practice test (pure JS, no extra DB query)
-    const practiceTestSkill = test.practiceTest.practiceTestSkills.find(
+    if (test.status !== 'IN_PROGRESS') throw new BadRequestException(`Test is already ${test.status}`);
+
+    const matchedSkill = test.practiceTest.practiceTestSkills.find(
       (pts) => pts.skillTest.skillTypeId === skillTypeId,
     );
-    if (!practiceTestSkill) {
-      throw new NotFoundException(`No '${skillType}' skill in this practice test`);
-    }
-  
-    const { skillTest } = practiceTestSkill;
-  
-    // validate attempt exists and has not been submitted yet
+    if (!matchedSkill) throw new NotFoundException(`No '${skillType}' skill in this test`);
+
+    const { skillTest } = matchedSkill;
+
     const attempt = await this.prisma.testSkillAttempt.findUnique({
       where: { testId_skillTestId: { testId, skillTestId: skillTest.id } },
     });
@@ -226,63 +193,52 @@ export class PracticeService {
         `Start the '${skillType}' attempt first: POST /practice/tests/${testId}/skills/${skillType}/start`,
       );
     }
-    if (attempt.submittedAt) {
-      throw new ConflictException(`'${skillType}' has already been submitted`);
-    }
-  
-    // validate no duplicate questionIds in submitted answers
-    const uniqueQuestionIds = new Set(dto.answers.map((a) => a.questionId));
-    if (uniqueQuestionIds.size !== dto.answers.length) {
+    if (attempt.submittedAt) throw new ConflictException(`'${skillType}' has already been submitted`);
+
+    const uniqueIds = new Set(dto.answers.map((a) => a.questionId));
+    if (uniqueIds.size !== dto.answers.length) {
       throw new BadRequestException('Duplicate questionIds in answers');
     }
-  
-    // build correct answer map only for auto-scored skills (listening, reading)
-    const isAutoScored = AUTO_SCORED_SKILLS.includes(skillType);
+
+    const isAutoScored    = AUTO_SCORED_SKILLS.includes(skillType);
     const correctAnswerMap = isAutoScored
       ? this.extractCorrectAnswers(skillTest.skillContent.contentJson as ContentJson)
       : new Map<string, string>();
-  
+
     let correctCount = 0;
     const totalGradeable = correctAnswerMap.size;
-  
-    // map each submitted answer to a DB row, checking correctness for auto-scored skills
+
     const answerRows = dto.answers.map((a) => {
-      const correct = correctAnswerMap.get(a.questionId) ?? null;
-      const isCorrect =
-        isAutoScored && correct !== null
-          ? this.checkAnswer(a.userAnswer ?? '', correct)
-          : null;
-  
+      const correct   = correctAnswerMap.get(a.questionId) ?? null;
+      const isCorrect = isAutoScored && correct !== null
+        ? this.checkAnswer(a.userAnswer ?? '', correct)
+        : null;
+
       if (isCorrect) correctCount++;
-  
+
       return {
-        attemptId: attempt.id,
-        questionId: a.questionId,
-        userAnswer: a.userAnswer ?? null,
+        attemptId:     attempt.id,
+        questionId:    a.questionId,
+        userAnswer:    a.userAnswer ?? null,
         correctAnswer: correct,
         isCorrect,
-        timeSpentSec: null as number | null, // per-question time not tracked yet
+        timeSpentSec:  null as number | null,
       };
     });
-  
-    // calculate scores — null for manual skills (writing, speaking)
+
     const score     = isAutoScored ? correctCount : null;
     const maxScore  = isAutoScored ? totalGradeable : null;
-    const bandScore =
-      isAutoScored && maxScore
-        ? this.ieltsListeningReadingBand(correctCount, maxScore)
-        : null;
-  
+    const bandScore = isAutoScored && maxScore
+      ? this.ieltsListeningReadingBand(correctCount, maxScore)
+      : null;
+
     try {
       await this.prisma.$transaction(async (tx) => {
-        // save all answers atomically
         const result = await tx.testAnswer.createMany({ data: answerRows, skipDuplicates: true });
-        // ensure all answers were saved — skipDuplicates can silently skip rows
         if (result.count !== answerRows.length) {
           throw new ConflictException('Some answers were already submitted');
         }
-  
-        // mark attempt as submitted with score data
+
         await tx.testSkillAttempt.update({
           where: { id: attempt.id },
           data: {
@@ -290,36 +246,448 @@ export class PracticeService {
             maxScore,
             bandScore,
             timeSpentSec: dto.timeSpentSec,
-            submittedAt: new Date(),
+            submittedAt:  new Date(),
           },
         });
-  
-        // check if all skills are submitted and complete the test if so
-        // inside transaction to keep test status consistent with attempt state
+
         await this.maybeCompleteTest(testId, tx);
       });
     } catch (error) {
-      // re-throw NestJS HTTP exceptions so they aren't swallowed as 500
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to submit skill');
     }
-  
+
     return {
-      message: `${skillType} submitted successfully`,
+      message:        `${skillType} submitted successfully`,
       skillType,
       score,
       maxScore,
       bandScore,
-      timeSpentSec: dto.timeSpentSec,
-      correctCount: isAutoScored ? correctCount : undefined,
+      timeSpentSec:   dto.timeSpentSec,
+      correctCount:   isAutoScored ? correctCount : undefined,
       totalQuestions: isAutoScored ? totalGradeable : undefined,
     };
   }
-  // submit writing skill
- 
-  
 
+  // ================================================================
+  // WRITING — Claude AI evaluation
+  // ================================================================
 
+  async submitWriting(testId: string, dto: SubmitSkillDto, userId: string) {
+    console.log('Submitting writing skill with answers:', dto.answers);
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      include: {
+        practiceTest: {
+          include: {
+            practiceTestSkills: {
+              include: {
+                skillTest: { include: { skillContent: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!test) throw new NotFoundException('Test not found');
+    if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
+    if (test.status !== 'IN_PROGRESS') throw new BadRequestException(`Test is already ${test.status}`);
+
+    const writingSkill = test.practiceTest.practiceTestSkills.find(
+      (pts) => pts.skillTest.skillTypeId === SKILL_TYPE_MAP['writing'],
+    );
+    if (!writingSkill) throw new NotFoundException('No writing skill found in this test');
+
+    const attempt = await this.prisma.testSkillAttempt.findUnique({
+      where: { testId_skillTestId: { testId, skillTestId: writingSkill.skillTest.id } },
+    });
+    if (!attempt) {
+      throw new BadRequestException(
+        `Start the writing attempt first: POST /practice/tests/${testId}/skills/writing/start`,
+      );
+    }
+    if (attempt.submittedAt) throw new ConflictException('Writing has already been submitted');
+
+    // pull essays from submitted answers
+    const task1Essay = dto.answers.find((a) => a.questionId === 'task1')?.userAnswer?.trim();
+    const task2Essay = dto.answers.find((a) => a.questionId === 'task2')?.userAnswer?.trim();
+
+    if (!task1Essay) throw new BadRequestException('Task 1 essay is missing (questionId: "task1")');
+    if (!task2Essay) throw new BadRequestException('Task 2 essay is missing (questionId: "task2")');
+
+    const wordCount  = (text: string) => text.split(/\s+/).filter(Boolean).length;
+    const task1Words = wordCount(task1Essay);
+    const task2Words = wordCount(task2Essay);
+
+    if (task1Words < 100) throw new BadRequestException(`Task 1 too short — ${task1Words} words, need at least 100`);
+    if (task2Words < 200) throw new BadRequestException(`Task 2 too short — ${task2Words} words, need at least 200`);
+
+    // pull question prompts from stored content if available
+    const content      = writingSkill.skillTest.skillContent.contentJson as any;
+    const task1Question = content?.task1?.question ?? '';
+    const task2Question = content?.task2?.question ?? '';
+
+    // evaluate both tasks in parallel — no reason to wait for one before the other
+    let task1Score: IELTSScore;
+    let task2Score: IELTSScore;
+    try {
+      [task1Score, task2Score] = await Promise.all([
+        this.evaluateWithClaude('task1', task1Question, task1Essay),
+        this.evaluateWithClaude('task2', task2Question, task2Essay),
+      ]);
+    } catch {
+      throw new InternalServerErrorException('Claude evaluation failed — please try again');
+    }
+
+    // Task 1 = 1/3, Task 2 = 2/3 of the final band (official IELTS weighting)
+    const overallBand =
+      Math.round((task1Score.overall_band / 3 + (task2Score.overall_band * 2) / 3) * 2) / 2;
+
+    // shorthand so the create block below stays readable
+    const t1 = task1Score.criteria;
+    const t2 = task2Score.criteria;
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // store raw essays so nothing is lost
+        await tx.testAnswer.createMany({
+          data: [
+            { attemptId: attempt.id, questionId: 'task1', userAnswer: task1Essay, isCorrect: null, correctAnswer: null },
+            { attemptId: attempt.id, questionId: 'task2', userAnswer: task2Essay, isCorrect: null, correctAnswer: null },
+          ],
+          skipDuplicates: true,
+        });
+
+        // store full Claude breakdown
+        await tx.writingEvaluation.create({
+          data: {
+            attemptId:   attempt.id,
+            overallBand,
+
+            // Task 1
+            task1Band:                         task1Score.overall_band,
+            task1TaskAchievement:              t1.task_achievement!.score,
+            task1TaskAchievementRationale:     t1.task_achievement!.rationale,
+            task1TaskAchievementExamples:      t1.task_achievement!.examples,
+            task1TaskAchievementSuggestions:   t1.task_achievement!.suggestions,
+            task1CoherenceCohesion:            t1.coherence_and_cohesion.score,
+            task1CoherenceCohesionRationale:   t1.coherence_and_cohesion.rationale,
+            task1CoherenceCohesionExamples:    t1.coherence_and_cohesion.examples,
+            task1CoherenceCohesionSuggestions: t1.coherence_and_cohesion.suggestions,
+            task1LexicalResource:              t1.lexical_resource.score,
+            task1LexicalResourceRationale:     t1.lexical_resource.rationale,
+            task1LexicalResourceExamples:      t1.lexical_resource.examples,
+            task1LexicalResourceSuggestions:   t1.lexical_resource.suggestions,
+            task1GrammaticalRange:              t1.grammatical_range_and_accuracy.score,
+            task1GrammaticalRangeRationale:     t1.grammatical_range_and_accuracy.rationale,
+            task1GrammaticalRangeExamples:      t1.grammatical_range_and_accuracy.examples,
+            task1GrammaticalRangeSuggestions:   t1.grammatical_range_and_accuracy.suggestions,
+            task1ImageFeedback:                task1Score.image_feedback ?? Prisma.JsonNull,
+            task1OverallFeedback:              task1Score.overall_feedback,
+            task1KeyStrengths:                 task1Score.key_strengths,
+            task1KeyWeaknesses:                task1Score.key_weaknesses,
+            task1PriorityImprovements:         task1Score.priority_improvements,
+            task1Essay,
+            task1WordCount:                    task1Words,
+
+            // Task 2
+            task2Band:                         task2Score.overall_band,
+            task2TaskResponse:                 t2.task_response!.score,
+            task2TaskResponseRationale:        t2.task_response!.rationale,
+            task2TaskResponseExamples:         t2.task_response!.examples,
+            task2TaskResponseSuggestions:      t2.task_response!.suggestions,
+            task2CoherenceCohesion:            t2.coherence_and_cohesion.score,
+            task2CoherenceCohesionRationale:   t2.coherence_and_cohesion.rationale,
+            task2CoherenceCohesionExamples:    t2.coherence_and_cohesion.examples,
+            task2CoherenceCohesionSuggestions: t2.coherence_and_cohesion.suggestions,
+            task2LexicalResource:              t2.lexical_resource.score,
+            task2LexicalResourceRationale:     t2.lexical_resource.rationale,
+            task2LexicalResourceExamples:      t2.lexical_resource.examples,
+            task2LexicalResourceSuggestions:   t2.lexical_resource.suggestions,
+            task2GrammaticalRange:              t2.grammatical_range_and_accuracy.score,
+            task2GrammaticalRangeRationale:     t2.grammatical_range_and_accuracy.rationale,
+            task2GrammaticalRangeExamples:      t2.grammatical_range_and_accuracy.examples,
+            task2GrammaticalRangeSuggestions:   t2.grammatical_range_and_accuracy.suggestions,
+            task2OverallFeedback:              task2Score.overall_feedback,
+            task2KeyStrengths:                 task2Score.key_strengths,
+            task2KeyWeaknesses:                task2Score.key_weaknesses,
+            task2PriorityImprovements:         task2Score.priority_improvements,
+            task2Essay,
+            task2WordCount:                    task2Words,
+          },
+        });
+
+        // mirror band score to the attempt so history queries stay uniform
+        await tx.testSkillAttempt.update({
+          where: { id: attempt.id },
+          data: {
+            bandScore:    overallBand,
+            timeSpentSec: dto.timeSpentSec,
+            submittedAt:  new Date(),
+          },
+        });
+
+        await this.maybeCompleteTest(testId, tx);
+      });
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException('Failed to save writing results');
+    }
+
+    return {
+      status:     'success',
+      task_type:  'writing',
+      word_count: { task1: task1Words, task2: task2Words },
+      scored_at:  new Date().toISOString(),
+      result: {
+        overall_band: overallBand,
+        task1: {
+          band:                  task1Score.overall_band,
+          criteria:              task1Score.criteria,
+          ...(task1Score.image_feedback && { image_feedback: task1Score.image_feedback }),
+          overall_feedback:      task1Score.overall_feedback,
+          key_strengths:         task1Score.key_strengths,
+          key_weaknesses:        task1Score.key_weaknesses,
+          priority_improvements: task1Score.priority_improvements,
+        },
+        task2: {
+          band:                  task2Score.overall_band,
+          criteria:              task2Score.criteria,
+          overall_feedback:      task2Score.overall_feedback,
+          key_strengths:         task2Score.key_strengths,
+          key_weaknesses:        task2Score.key_weaknesses,
+          priority_improvements: task2Score.priority_improvements,
+        },
+      },
+    };
+  }
+
+  // ================================================================
+  // CONTENT — public browsing
+  // ================================================================
+
+  async getAllPracticeTests(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const [practiceTests, total] = await this.prisma.$transaction([
+      this.prisma.practiceTest.findMany({
+        skip,
+        take: limit,
+        select: { id: true, title: true },
+      }),
+      this.prisma.practiceTest.count(),
+    ]);
+
+    return {
+      data: practiceTests.map((pt) => ({ practiceTestId: pt.id, title: pt.title })),
+      meta: this.buildMeta(total, page, limit),
+    };
+  }
+
+  async getAllSkills(query: GetSkillsQueryDto) {
+    const { skillType, page = 1, limit = 20 } = query;
+    const skip  = (page - 1) * limit;
+    const where = skillType ? { skillType: { name: skillType } } : {};
+
+    const [skillTests, total] = await this.prisma.$transaction([
+      this.prisma.skillTest.findMany({
+        where,
+        take: limit,
+        skip,
+        select: {
+          skillContentId: true,
+          numberOfVisits: true,
+          skillType:          { select: { name: true } },
+          practiceTestSkills: {
+            select: {
+              practiceTestId: true,
+              practiceTest:   { select: { title: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.skillTest.count({ where }),
+    ]);
+
+    return {
+      data: skillTests.map((st) => ({
+        skillType:      st.skillType.name,
+        skillContentId: st.skillContentId,
+        numberOfVisits: st.numberOfVisits,
+        practiceTests:  st.practiceTestSkills.map((pts) => ({
+          practiceTestId: pts.practiceTestId,
+          title:          pts.practiceTest.title,
+        })),
+      })),
+      meta: this.buildMeta(total, page, limit),
+    };
+  }
+
+  async getPracticeTestPreview(practiceTestId: string) {
+    const practiceTest = await this.prisma.practiceTest.findUnique({
+      where: { id: practiceTestId },
+      include: {
+        practiceTestSkills: {
+          include: {
+            skillTest: { include: { skillContent: true, skillType: true } },
+          },
+        },
+      },
+    });
+    if (!practiceTest) throw new NotFoundException(`PracticeTest not found`);
+
+    return {
+      practiceTestId: practiceTest.id,
+      title:          practiceTest.title,
+      skills:         practiceTest.practiceTestSkills.map(({ skillTest }) => ({
+        skillTestId:    skillTest.id,
+        skillType:      skillTest.skillType.name,
+        audioUrl:       skillTest.skillContent.audioUrl ?? null,
+        source:         skillTest.skillContent.source,
+        createdAt:      skillTest.skillContent.createdAt,
+        content:        this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
+      })),
+    };
+  }
+
+  async getSkillContent(skillContentId: string) {
+    const skillContent = await this.prisma.skillContent.findUnique({
+      where: { id: skillContentId },
+      select: {
+        id:        true,
+        audioUrl:  true,
+        source:    true,
+        createdAt: true,
+        contentJson: true,
+        skillType:   { select: { name: true } },
+        skillTests:  { select: { id: true } },
+      },
+    });
+    if (!skillContent) throw new NotFoundException(`SkillContent not found`);
+
+    return {
+      skillContentId: skillContent.id,
+      skillType:      skillContent.skillType.name,
+      audioUrl:       skillContent.audioUrl ?? null,
+      source:         skillContent.source,
+      createdAt:      skillContent.createdAt,
+      content:        this.stripAnswers(skillContent.contentJson as ContentJson),
+    };
+  }
+
+  async getTestContent(testId: string, userId: string) {
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      include: {
+        practiceTest: {
+          include: {
+            practiceTestSkills: {
+              include: {
+                skillTest: { include: { skillContent: true, skillType: true } },
+              },
+            },
+          },
+        },
+        skillAttempts: true,
+      },
+    });
+    if (!test) throw new NotFoundException(`Test not found`);
+    if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
+
+    return {
+      testId:         test.id,
+      status:         test.status,
+      startedAt:      test.startedAt,
+      practiceTestId: test.practiceTestId,
+      title:          test.practiceTest.title,
+      skills:         test.practiceTest.practiceTestSkills.map(({ skillTest }) => {
+        const attempt = test.skillAttempts.find((a) => a.skillTestId === skillTest.id);
+        return {
+          skillTestId:   skillTest.id,
+          skillType:     skillTest.skillType.name,
+          audioUrl:      skillTest.skillContent.audioUrl ?? null,
+          source:        skillTest.skillContent.source,
+          attemptId:     attempt?.id ?? null,
+          attemptStatus: !attempt ? 'NOT_STARTED' : attempt.submittedAt ? 'SUBMITTED' : 'IN_PROGRESS',
+          content:       this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
+        };
+      }),
+    };
+  }
+
+  // ================================================================
+  // PRIVATE HELPERS
+  // ================================================================
+
+  private async evaluateWithClaude(
+    task:     'task1' | 'task2',
+    question: string,
+    essay:    string,
+  ): Promise<IELTSScore> {
+    const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+
+    const response = await anthropic.messages.create({
+      model:      'claude-sonnet-4-6',
+      max_tokens: 2048,
+      system: [
+        {
+          type:          'text',
+          text:          IELTS_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' }, // rubric cached — saves ~65% input cost
+        },
+      ],
+      messages: [
+        {
+          role:    'user',
+          content: `Task Type: IELTS Writing ${task === 'task1' ? 'Task 1' : 'Task 2'}
+
+Question:
+${question || 'Not provided'}
+
+Student Essay:
+${essay}
+
+Return the JSON score object only.`,
+        },
+      ],
+    });
+
+    const raw = response.content
+      .filter((b) => b.type === 'text')
+      .map((b: any) => b.text)
+      .join('');
+
+    return JSON.parse(raw.replace(/```json|```/g, '').trim()) as IELTSScore;
+  }
+
+  private async maybeCompleteTest(
+    testId: string,
+    tx: Prisma.TransactionClient | typeof this.prisma = this.prisma,
+  ) {
+    const test = await tx.test.findUnique({
+      where:   { id: testId },
+      include: {
+        practiceTest:  { include: { practiceTestSkills: true } },
+        skillAttempts: true,
+      },
+    });
+
+    if (!test || test.status !== 'IN_PROGRESS') return;
+
+    const totalSkills       = test.practiceTest.practiceTestSkills.length;
+    const submittedAttempts = test.skillAttempts.filter((a) => a.submittedAt);
+
+    if (submittedAttempts.length < totalSkills) return;
+
+    const totalScore = submittedAttempts.reduce((sum, a) => sum + (a.score ?? 0), 0);
+    const maxScore   = submittedAttempts.reduce((sum, a) => sum + (a.maxScore ?? 0), 0);
+
+    await tx.test.update({
+      where: { id: testId },
+      data:  { status: 'COMPLETED', totalScore, maxScore, completedAt: new Date() },
+    });
+  }
 
   private resolveSkillTypeId(skillType: SkillTypeName): number {
     const id = SKILL_TYPE_MAP[skillType];
@@ -332,28 +700,24 @@ export class PracticeService {
   }
 
   private extractCorrectAnswers(content: ContentJson): Map<string, string> {
-    const map = new Map<string, string>();
+    const map    = new Map<string, string>();
     const blocks = [
       ...(content.sections?.flatMap((s) => s.question_blocks) ?? []),
       ...(content.passages?.flatMap((p) => p.question_blocks) ?? []),
     ];
+
     for (const block of blocks) {
-      if (block.questions) {
-        for (const q of block.questions) {
-          if (q.id && q.answer !== undefined) {
-            map.set(q.id, q.answer);
-          }
-        }
+      for (const q of block.questions ?? []) {
+        if (q.id && q.answer !== undefined) map.set(q.id, q.answer);
       }
     }
+
     return map;
   }
 
   private checkAnswer(userAnswer: string, correctAnswer: string): boolean {
     const normalise = (s: string) => s.trim().toLowerCase();
-    const user = normalise(userAnswer);
-    const accepted = correctAnswer.split('/').map(normalise);
-    return accepted.some((a) => a === user);
+    return correctAnswer.split('/').map(normalise).some((a) => a === normalise(userAnswer));
   }
 
   private ieltsListeningReadingBand(correct: number, max: number): number {
@@ -372,263 +736,38 @@ export class PracticeService {
     return 3.5;
   }
 
-  private async maybeCompleteTest(
-    testId: string,
-    // accept tx so it can run inside caller's transaction
-    // defaults to this.prisma when called standalone
-    tx: Prisma.TransactionClient | typeof this.prisma = this.prisma,
-  ) {
-    // re-fetch test with all skill attempts and expected skills count
-    const test = await tx.test.findUnique({
-      where: { id: testId },
-      include: {
-        practiceTest: { include: { practiceTestSkills: true } },
-        skillAttempts: true,
-      },
-    });
-  
-    // skip if test not found or already completed/cancelled
-    if (!test || test.status !== 'IN_PROGRESS') return;
-  
-    const totalSkills = test.practiceTest.practiceTestSkills.length;
-  
-    // only count attempts that have been actually submitted
-    const submittedAttempts = test.skillAttempts.filter((a) => a.submittedAt);
-  
-    // not all skills submitted yet — do nothing
-    if (submittedAttempts.length < totalSkills) return;
-  
-    // aggregate scores across all submitted skill attempts
-    // skills without auto-scoring (writing/speaking) contribute 0 until manually graded
-    const totalScore = submittedAttempts.reduce((sum, a) => sum + (a.score ?? 0), 0);
-    const maxScore   = submittedAttempts.reduce((sum, a) => sum + (a.maxScore ?? 0), 0);
-  
-    // all skills submitted — mark test as completed
-    await tx.test.update({
-      where: { id: testId },
-      data: {
-        status: 'COMPLETED',
-        totalScore,
-        maxScore,
-        completedAt: new Date(),
-      },
-    });
-  }
-
-//  GET PRACTICE TEST PREVIEW (before starting)
-
-async getPracticeTestPreview(practiceTestId: string) {
-  const practiceTest = await this.prisma.practiceTest.findUnique({
-    where: { id: practiceTestId },
-    include: {
-      practiceTestSkills: {
-        include: {
-          skillTest: {
-            include: { skillContent: true, skillType: true },
-          },
-        },
-      },
-    },
-  });
-  if (!practiceTest) {
-    throw new NotFoundException(`PracticeTest '${practiceTestId}' not found`);
-  }
-
-  return {
-    practiceTestId: practiceTest.id,
-    title: practiceTest.title,
-    skills: practiceTest.practiceTestSkills.map(({ skillTest }) => ({
-      skillTestId: skillTest.id,
-      skillType: skillTest.skillType.name,
-      audioUrl: skillTest.skillContent.audioUrl ?? null,
-      source: skillTest.skillContent.source,
-      createdAt: skillTest.skillContent.createdAt,
-      content: this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
-    })),
-  };
-}
-
-async getTestContent(testId: string, userId: string) {
-  const test = await this.prisma.test.findUnique({
-    where: { id: testId },
-    include: {
-      practiceTest: {
-        include: {
-          practiceTestSkills: {
-            include: {
-              skillTest: {
-                include: { skillContent: true, skillType: true },
-              },
-            },
-          },
-        },
-      },
-      skillAttempts: true,
-    },
-  });
-  if (!test) throw new NotFoundException(`Test '${testId}' not found`);
-  if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
-
-  return {
-    testId: test.id,
-    status: test.status,
-    startedAt: test.startedAt,
-    practiceTestId: test.practiceTestId,
-    title: test.practiceTest.title,
-    skills: test.practiceTest.practiceTestSkills.map(({ skillTest }) => {
-      const attempt = test.skillAttempts.find((a) => a.skillTestId === skillTest.id);
-      return {
-        skillTestId: skillTest.id,
-        skillType: skillTest.skillType.name,
-        audioUrl: skillTest.skillContent.audioUrl ?? null,
-        source: skillTest.skillContent.source,
-        attemptId: attempt?.id ?? null,
-        attemptStatus: attempt
-          ? attempt.submittedAt ? 'SUBMITTED' : 'IN_PROGRESS'
-          : 'NOT_STARTED',
-        content: this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
-      };
-    }),
-  };
-}
-
-
-// Get all practice tests ( title only for listing page)
-async getAllPracticeTests(page: number = 1, limit: number = 20) {
-  const skip = (page - 1) * limit;
-
-  const [practiceTests, total] = await this.prisma.$transaction([
-    this.prisma.practiceTest.findMany({
-      skip,
-      take: limit,
-      select: {
-        id: true,
-        title: true,
-      },
-    }),
-    this.prisma.practiceTest.count(),
-  ]);
-
-  return {
-    data: practiceTests.map((pt) => ({
-      practiceTestId: pt.id,
-      title: pt.title,
-    })),
-    meta: {
+  private buildMeta(total: number, page: number, limit: number) {
+    const totalPages = Math.ceil(total / limit);
+    return {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      hasNextPage: page < Math.ceil(total / limit),
+      totalPages,
+      hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
-    },
-  };
-}
-// Get all skills (title only for listing page)
-async getAllSkills(query: GetSkillsQueryDto) {
-  // default to page 1, limit 20 if not provided
-  const { skillType, page = 1, limit = 20 } = query;
-  const skip = (page - 1) * limit;
-  // map skillType name to id for filtering
-  const where = skillType
-    ? { skillType: { name: skillType } }
-    : {};
-
-  const [skillTests, total] = await this.prisma.$transaction([
-    this.prisma.skillTest.findMany({
-      where,
-      take: limit,
-      skip,
-      select: {
-        skillContentId: true,
-        numberOfVisits: true,
-        skillType: { // join to get skill type name
-          select: { name: true },
-        },
-        practiceTestSkills: {
-          select: {  // joint table to find which practice tests this skill belongs to
-            practiceTestId: true,
-            practiceTest: { // get practice test title for listing page
-              select: { title: true },
-            },
-          },
-        },
-      },
-    }),
-    this.prisma.skillTest.count({ where }),
-  ]);
-
-  return {
-    data: skillTests.map((st) => ({
-      skillType: st.skillType.name,
-      skillContentId: st.skillContentId,
-      numberOfVisits: st.numberOfVisits,
-      practiceTests: st.practiceTestSkills.map((pts) => ({
-        practiceTestId: pts.practiceTestId,
-        title: pts.practiceTest.title,
-      })),
-    })),
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-      hasNextPage: page < Math.ceil(total / limit),
-      hasPrevPage: page > 1,
-    },
-  };
-}
-// get single content skill preview not start attempt
-async getSkillContent(skillContentId: string) {
-  const skillContent = await this.prisma.skillContent.findUnique({
-    where: { id: skillContentId },
-    select: {
-      id: true,
-      audioUrl: true,
-      source: true,
-      createdAt: true,
-      contentJson: true,
-      skillType: { select: { name: true } },
-      skillTests: { select: { id: true } },  // ← get skillTest id
-    },
-  });
-
-  if (!skillContent) {
-    throw new NotFoundException(`SkillContent '${skillContentId}' not found`);
+    };
   }
 
+  private stripAnswers(content: ContentJson): ContentJson {
+    const strip = (questions: QuestionEntry[]) =>
+      questions.map(({ answer: _answer, ...rest }) => rest);
 
-  return {
-    skillContentId: skillContent.id,
-    skillType: skillContent.skillType.name,
-    audioUrl: skillContent.audioUrl ?? null,
-    source: skillContent.source,
-    createdAt: skillContent.createdAt,
-    content: this.stripAnswers(skillContent.contentJson as ContentJson),
-  };
-}
-// ── strip correct answers before sending to client ────────────────────────
-
-private stripAnswers(content: ContentJson): ContentJson {
-  const strip = (questions: QuestionEntry[]) =>
-    questions.map(({ answer: _answer, ...rest }) => rest);
-
-  return {
-    sections: content.sections?.map((section) => ({
-      ...section,
-      question_blocks: section.question_blocks.map((block) => ({
-        ...block,
-        questions: block.questions ? strip(block.questions) : undefined,
+    return {
+      sections: content.sections?.map((section) => ({
+        ...section,
+        question_blocks: section.question_blocks.map((block) => ({
+          ...block,
+          questions: block.questions ? strip(block.questions) : undefined,
+        })),
       })),
-    })),
-    passages: content.passages?.map((passage) => ({
-      ...passage,
-      question_blocks: passage.question_blocks.map((block) => ({
-        ...block,
-        answers: undefined,           // drop top-level answer keys too
-        questions: block.questions ? strip(block.questions) : undefined,
+      passages: content.passages?.map((passage) => ({
+        ...passage,
+        question_blocks: passage.question_blocks.map((block) => ({
+          ...block,
+          answers:   undefined,
+          questions: block.questions ? strip(block.questions) : undefined,
+        })),
       })),
-    })),
-  };
-}
+    };
+  }
 }
