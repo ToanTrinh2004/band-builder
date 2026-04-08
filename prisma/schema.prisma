@@ -20,7 +20,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tests        Test[]
+  tests               Test[]
+  userCredit          UserCredit?
+  creditTransactions  CreditTransaction[]
+  sampleAccesses      SpeakingSampleAccess[]
 
   @@map("users")
 }
@@ -47,8 +50,9 @@ model SkillContent {
   source      String
   createdAt   DateTime @default(now())
 
-  skillType  SkillType   @relation(fields: [skillTypeId], references: [id])
-  skillTests SkillTest[]
+  skillType       SkillType        @relation(fields: [skillTypeId], references: [id])
+  skillTests      SkillTest[]
+  speakingSamples SpeakingSample[]
 
   @@map("skill_contents")
 }
@@ -127,7 +131,7 @@ model TestSkillAttempt {
   skillTestId  String
   score        Float?
   maxScore     Float?
-  bandScore    Float?     // ← for writing: mirrors overallBand from WritingEvaluation
+  bandScore    Float?
   timeSpentSec Int?
   submittedAt  DateTime?
   createdAt    DateTime  @default(now())
@@ -135,11 +139,12 @@ model TestSkillAttempt {
   test              Test               @relation(fields: [testId], references: [id])
   skillTest         SkillTest          @relation(fields: [skillTestId], references: [id])
   answers           TestAnswer[]
-  writingEvaluation WritingEvaluation? // ← null for Listening/Reading/Speaking
+  writingEvaluation WritingEvaluation?
 
   @@unique([testId, skillTestId])
   @@map("test_skill_attempts")
 }
+
 // ============================================================
 // TEST ANSWERS — per question tracking
 // ============================================================
@@ -147,7 +152,7 @@ model TestSkillAttempt {
 model TestAnswer {
   id            String   @id @default(uuid())
   attemptId     String
-  questionId    String   // e.g. "L1Q1", "R2Q16" — matches id in contentJson
+  questionId    String
   userAnswer    String?
   correctAnswer String?
   isCorrect     Boolean?
@@ -158,69 +163,188 @@ model TestAnswer {
 
   @@map("test_answers")
 }
+
 // ============================================================
 // WRITING EVALUATION — separate table for AI scoring
 // ============================================================
 
 model WritingEvaluation {
-  id         String   @id @default(uuid())
-  attemptId  String   @unique
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  attemptId String   @unique
+  createdAt DateTime @default(now())
 
   overallBand Float
 
   // Task 1
-  task1Band                      Float
-  task1TaskAchievement           Float
-  task1TaskAchievementRationale  String
-  task1TaskAchievementExamples   String
-  task1TaskAchievementSuggestions String
-  task1CoherenceCohesion         Float
-  task1CoherenceCohesionRationale  String
-  task1CoherenceCohesionExamples   String
+  task1Band                         Float
+  task1TaskAchievement              Float
+  task1TaskAchievementRationale     String
+  task1TaskAchievementExamples      String
+  task1TaskAchievementSuggestions   String
+  task1CoherenceCohesion            Float
+  task1CoherenceCohesionRationale   String
+  task1CoherenceCohesionExamples    String
   task1CoherenceCohesionSuggestions String
-  task1LexicalResource           Float
-  task1LexicalResourceRationale  String
-  task1LexicalResourceExamples   String
-  task1LexicalResourceSuggestions String
-  task1GrammaticalRange          Float
-  task1GrammaticalRangeRationale  String
-  task1GrammaticalRangeExamples   String
-  task1GrammaticalRangeSuggestions String
-  task1ImageFeedback             Json?     // nullable — only if image was provided
-  task1OverallFeedback           String
-  task1KeyStrengths              String[]
-  task1KeyWeaknesses             String[]
-  task1PriorityImprovements      String[]
-  task1Essay                     String
-  task1WordCount                 Int
+  task1LexicalResource              Float
+  task1LexicalResourceRationale     String
+  task1LexicalResourceExamples      String
+  task1LexicalResourceSuggestions   String
+  task1GrammaticalRange             Float
+  task1GrammaticalRangeRationale    String
+  task1GrammaticalRangeExamples     String
+  task1GrammaticalRangeSuggestions  String
+  task1ImageFeedback                Json?
+  task1OverallFeedback              String
+  task1KeyStrengths                 String[]
+  task1KeyWeaknesses                String[]
+  task1PriorityImprovements         String[]
+  task1Essay                        String
+  task1WordCount                    Int
 
   // Task 2
-  task2Band                      Float
-  task2TaskResponse              Float
-  task2TaskResponseRationale     String
-  task2TaskResponseExamples      String
-  task2TaskResponseSuggestions   String
-  task2CoherenceCohesion         Float
-  task2CoherenceCohesionRationale  String
-  task2CoherenceCohesionExamples   String
+  task2Band                         Float
+  task2TaskResponse                 Float
+  task2TaskResponseRationale        String
+  task2TaskResponseExamples         String
+  task2TaskResponseSuggestions      String
+  task2CoherenceCohesion            Float
+  task2CoherenceCohesionRationale   String
+  task2CoherenceCohesionExamples    String
   task2CoherenceCohesionSuggestions String
-  task2LexicalResource           Float
-  task2LexicalResourceRationale  String
-  task2LexicalResourceExamples   String
-  task2LexicalResourceSuggestions String
-  task2GrammaticalRange          Float
-  task2GrammaticalRangeRationale  String
-  task2GrammaticalRangeExamples   String
-  task2GrammaticalRangeSuggestions String
-  task2OverallFeedback           String
-  task2KeyStrengths              String[]
-  task2KeyWeaknesses             String[]
-  task2PriorityImprovements      String[]
-  task2Essay                     String
-  task2WordCount                 Int
+  task2LexicalResource              Float
+  task2LexicalResourceRationale     String
+  task2LexicalResourceExamples      String
+  task2LexicalResourceSuggestions   String
+  task2GrammaticalRange             Float
+  task2GrammaticalRangeRationale    String
+  task2GrammaticalRangeExamples     String
+  task2GrammaticalRangeSuggestions  String
+  task2OverallFeedback              String
+  task2KeyStrengths                 String[]
+  task2KeyWeaknesses                String[]
+  task2PriorityImprovements         String[]
+  task2Essay                        String
+  task2WordCount                    Int
 
   attempt TestSkillAttempt @relation(fields: [attemptId], references: [id])
 
   @@map("writing_evaluations")
+}
+
+// ============================================================
+// SPEAKING SAMPLES
+// ============================================================
+
+model SpeakingSample {
+  id             String   @id @default(uuid())
+  skillContentId String
+  questionId     String   // e.g. "p1_work_q1" — matches id in contentJson
+  band           Int      // 5 | 6 | 7 | 8 | 9
+  answerText     String
+  tip            String
+  vocabularyHighlights String[]
+  createdAt      DateTime @default(now())
+
+  skillContent SkillContent          @relation(fields: [skillContentId], references: [id])
+  accesses     SpeakingSampleAccess[]
+
+  @@unique([skillContentId, questionId, band])
+  @@map("speaking_samples")
+}
+
+model SpeakingSampleAccess {
+  id            String   @id @default(uuid())
+  userId        String
+  sampleId      String
+  transactionId String?  // null if granted free / admin override
+
+  accessedAt DateTime @default(now())
+
+  user        User               @relation(fields: [userId], references: [id])
+  sample      SpeakingSample     @relation(fields: [sampleId], references: [id])
+  transaction CreditTransaction? @relation(fields: [transactionId], references: [id])
+
+  @@unique([userId, sampleId])
+  @@map("speaking_sample_accesses")
+}
+
+// ============================================================
+// CREDIT PACKAGES
+// ============================================================
+
+model CreditPackage {
+  id          String   @id @default(uuid())
+  name        String   // e.g. "Starter", "Popular", "Pro"
+  credits     Int      // base credits granted
+  priceVnd    Int      // price in VND
+  bonusCredit Int      @default(0)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  transactions CreditTransaction[]
+
+  @@map("credit_packages")
+}
+
+// ============================================================
+// CREDITS
+// ============================================================
+
+model UserCredit {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_credits")
+}
+
+model CreditTransaction {
+  id            String                @id @default(uuid())
+  userId        String
+  packageId     String?
+  type          CreditTransactionType
+  amount        Int                   // credits, signed (+ add, - spend)
+  balanceBefore Int
+  balanceAfter  Int
+  description   String?
+  referenceId   String?               // sampleId when type=SPEND
+
+  // SePay / VietQR fields
+  provider        String?   @default("sepay")
+  transferMemo    String?   @unique   // e.g. "IELTSA3F9B2" — matched by SePay webhook
+  bankCode        String?             // e.g. "MB"
+  bankAccount     String?             // receiving account number
+  amountVnd       Int?                // VND amount expected
+  sePayTxId       String?   @unique   // id from SePay webhook payload
+  sePayWebhookRaw Json?               // raw webhook body for audit
+  paidAt          DateTime?
+  expiredAt       DateTime?           // QR expires after 15 min
+
+  status    CreditTxStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+
+  user         User                   @relation(fields: [userId], references: [id])
+  package      CreditPackage?         @relation(fields: [packageId], references: [id])
+  sampleAccess SpeakingSampleAccess[]
+
+  @@map("credit_transactions")
+}
+
+enum CreditTransactionType {
+  PURCHASE  // user bought credits
+  SPEND     // user spent credits on a sample
+  REFUND    // credits returned
+  BONUS     // free credits granted by admin
+  EXPIRY    // credits expired
+}
+
+enum CreditTxStatus {
+  PENDING    // QR shown, waiting for transfer
+  COMPLETED  // SePay webhook confirmed
+  FAILED     // expired or amount mismatch
+  REFUNDED
 }
