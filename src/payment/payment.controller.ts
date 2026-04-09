@@ -39,12 +39,11 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a pending purchase & return VietQR data' })
-  @ApiResponse({ status: 201, type: PaymentQrResponseDto })
   async initiatePayment(
-    @CurrentUser('id') userId: string,
+    @Req() req: Request,
     @Body() dto: InitiatePaymentDto,
   ): Promise<PaymentQrResponseDto> {
+    const userId = (req.user as any).id;
     return this.paymentService.initiatePayment(userId, dto);
   }
 
