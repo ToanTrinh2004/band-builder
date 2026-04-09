@@ -12,29 +12,23 @@ export class InitiatePaymentDto {
 
 export class SePayWebhookDto {
   @ApiProperty()
-  @IsString()
-  id: string; // SePay transaction id
+  id: string;
 
   @ApiProperty()
-  @IsString()
-  transferMemo: string; // e.g. "IELTSA3F9B2"
+  content: string;          // ← was transferMemo
 
   @ApiProperty()
-  amount: number; // VND amount received
+  transferAmount: number;   // ← was amount
 
   @ApiProperty()
-  @IsString()
   bankCode: string;
 
   @ApiProperty()
-  @IsString()
   bankAccount: string;
 
   @ApiProperty()
-  @IsString()
-  transactionDate: string; // ISO string from SePay
+  transactionDate: string;
 
-  // Raw fields SePay sends — keep them all for the audit log
   [key: string]: unknown;
 }
 

@@ -101,7 +101,8 @@ export class PaymentService {
   async handleSePayWebhook(payload: SePayWebhookDto, rawBody: object) {
     this.verifySePaySignature(rawBody);
 
-    const memo = payload.transferMemo?.trim().toUpperCase();
+    const memo   = payload.content?.trim().toUpperCase();
+    const amount = payload.transferAmount;
     if (!memo) {
       this.logger.warn('SePay webhook: missing transferMemo');
       return { success: false };
@@ -128,7 +129,7 @@ export class PaymentService {
     }
 
     // Amount check — allow ±0 tolerance (exact match required by default)
-    if (payload.amount < tx.amountVnd!) {
+    if (amount < tx.amountVnd!) {
       this.logger.warn(
         `SePay webhook: amount mismatch for "${memo}" — expected ${tx.amountVnd}, got ${payload.amount}`,
       );
