@@ -43,7 +43,9 @@ export class PaymentController {
     @Req() req: Request,
     @Body() dto: InitiatePaymentDto,
   ): Promise<PaymentQrResponseDto> {
+    console.log('=== DEBUG req.user ===', JSON.stringify(req.user, null, 2));
     const userId = (req.user as any).id;
+    console.log('=== DEBUG userId ===', userId);
     return this.paymentService.initiatePayment(userId, dto);
   }
 
