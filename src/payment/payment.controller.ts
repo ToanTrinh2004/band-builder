@@ -57,7 +57,7 @@ export class PaymentController {
   @ApiOperation({ summary: 'Poll status of a pending credit purchase' })
   @ApiResponse({ status: 200, type: PaymentStatusResponseDto })
   async getStatus(
-    @CurrentUser('id') userId: string,
+    @CurrentUser('userId') userId: string,
     @Param('transactionId') transactionId: string,
   ): Promise<PaymentStatusResponseDto> {
     return this.paymentService.getPaymentStatus(userId, transactionId);
