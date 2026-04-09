@@ -98,86 +98,95 @@ export class PaymentService {
    * We validate the amount, mark the transaction COMPLETED, and top up
    * the user's credit balance — all inside a single DB transaction.
    */
-  async handleSePayWebhook(payload: SePayWebhookDto, rawBody: object) {
+  async handleSePayWebhook(payload: any, rawBody: object) {
     this.verifySePaySignature(rawBody);
-
-    const memo   = payload.content?.trim().toUpperCase();
-    const amount = payload.transferAmount;
+  
+    // extract memo from full bank content string e.g.
+    // "124609264075-IELTS8B0AC7-CHUYEN TIEN-..."
+    const content = (payload.content ?? payload.transferMemo ?? '') as string;
+    const match   = content.match(/IELTS[A-Z0-9]{6}/i);
+    const memo    = match?.[0]?.toUpperCase();
+  
+    this.logger.log(`SePay raw content: "${content}" → extracted memo: "${memo}"`);
+  
     if (!memo) {
-      this.logger.warn('SePay webhook: missing transferMemo');
+      this.logger.warn('SePay webhook: could not extract memo from content');
       return { success: false };
     }
-
+  
+    const amount = (payload.transferAmount ?? payload.amount) as number;
+  
     const tx = await this.prisma.creditTransaction.findUnique({
-      where: { transferMemo: memo },
+      where:   { transferMemo: memo },
       include: { package: true, user: true },
     });
-
+  
     if (!tx) {
       this.logger.warn(`SePay webhook: no transaction for memo "${memo}"`);
       return { success: false };
     }
-
+  
     if (tx.status === CreditTxStatus.COMPLETED) {
       this.logger.log(`SePay webhook: memo "${memo}" already completed — skipped`);
-      return { success: true }; // idempotent
+      return { success: true }; // idempotent — stop SePay retrying
     }
-
+  
     if (tx.status === CreditTxStatus.FAILED) {
       this.logger.warn(`SePay webhook: memo "${memo}" already failed/expired`);
       return { success: false };
     }
-
-    // Amount check — allow ±0 tolerance (exact match required by default)
+  
+    // amount check
     if (amount < tx.amountVnd!) {
       this.logger.warn(
-        `SePay webhook: amount mismatch for "${memo}" — expected ${tx.amountVnd}, got ${payload.amount}`,
+        `SePay webhook: amount mismatch for "${memo}" — expected ${tx.amountVnd}, got ${amount}`,
       );
       await this.prisma.creditTransaction.update({
         where: { id: tx.id },
-        data: { status: CreditTxStatus.FAILED, sePayWebhookRaw: rawBody as any },
+        data:  { status: CreditTxStatus.FAILED, sePayWebhookRaw: rawBody as any },
       });
       return { success: false };
     }
-
-    // Expiry check
+  
+    // expiry check
     if (tx.expiredAt && new Date() > tx.expiredAt) {
       await this.prisma.creditTransaction.update({
         where: { id: tx.id },
-        data: { status: CreditTxStatus.FAILED, sePayWebhookRaw: rawBody as any },
+        data:  { status: CreditTxStatus.FAILED, sePayWebhookRaw: rawBody as any },
       });
       this.logger.warn(`SePay webhook: memo "${memo}" expired`);
       return { success: false };
     }
-
-    // Complete the purchase in one atomic transaction
-    const creditsToAdd = tx.amount; // already includes bonus
+  
+    // all good — complete atomically
+    const creditsToAdd = tx.amount;
+  
     await this.prisma.$transaction(async (prx) => {
-      const credit = await prx.userCredit.findUnique({ where: { userId: tx.userId } });
+      const credit        = await prx.userCredit.findUnique({ where: { userId: tx.userId } });
       const balanceBefore = credit?.balance ?? 0;
-      const balanceAfter = balanceBefore + creditsToAdd;
-
-      // Update credit balance
+      const balanceAfter  = balanceBefore + creditsToAdd;
+  
       await prx.userCredit.upsert({
-        where: { userId: tx.userId },
+        where:  { userId: tx.userId },
         create: { userId: tx.userId, balance: creditsToAdd },
         update: { balance: { increment: creditsToAdd } },
       });
-
-      // Finalise transaction record
+  
       await prx.creditTransaction.update({
         where: { id: tx.id },
         data: {
-          status: CreditTxStatus.COMPLETED,
+          status:          CreditTxStatus.COMPLETED,
           balanceBefore,
           balanceAfter,
-          sePayTxId: String(payload.id),
+          sePayTxId:       String(payload.id),
           sePayWebhookRaw: rawBody as any,
-          paidAt: new Date(payload.transactionDate) ?? new Date(),
+          paidAt:          payload.transactionDate
+                             ? new Date(payload.transactionDate)
+                             : new Date(),
         },
       });
     });
-
+  
     this.logger.log(`SePay webhook: credited ${creditsToAdd} to user ${tx.userId}`);
     return { success: true };
   }

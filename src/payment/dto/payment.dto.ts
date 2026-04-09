@@ -11,27 +11,14 @@ export class InitiatePaymentDto {
 }
 
 export class SePayWebhookDto {
-  @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  content: string;          // ← was transferMemo
-
-  @ApiProperty()
-  transferAmount: number;   // ← was amount
-
-  @ApiProperty()
-  bankCode: string;
-
-  @ApiProperty()
-  bankAccount: string;
-
-  @ApiProperty()
+  id:              string;
+  content:         string;   // ← full bank description string
+  transferAmount:  number;   // ← also fix this
+  bankCode:        string;
+  bankAccount:     string;
   transactionDate: string;
-
   [key: string]: unknown;
 }
-
 // ─── Response DTOs ──────────────────────────────────────────
 
 export class PaymentQrResponseDto {
