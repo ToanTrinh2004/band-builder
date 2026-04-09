@@ -462,6 +462,107 @@ export class PracticeService {
       },
     };
   }
+  // SPEAKING HINT AND SAMLPE RESPONSE
+  async getSpeakingHint(skillContentId: string, questionId: string) {
+    const skillContent = await this.prisma.skillContent.findUnique({
+      where: { id: skillContentId },
+      select: { contentJson: true },
+    });
+    if (!skillContent) throw new NotFoundException('Skill content not found');
+   
+    const content = skillContent.contentJson as any;
+    const hint    = this.extractHint(content, questionId);
+    if (!hint) throw new NotFoundException(`No hint found for questionId: ${questionId}`);
+   
+    return {
+      questionId,
+      skillContentId,
+      hints:            hint.hints,
+      grammar_features: hint.grammar_features ?? null,
+    };
+  }
+   
+  async getSpeakingSample(
+    skillContentId: string,
+    questionId:     string,
+    band:           number,
+    userId:         string,
+  ) {
+    // 1. validate band
+    if (![5, 6, 7, 8, 9].includes(band)) {
+      throw new BadRequestException('Band must be one of: 5, 6, 7, 8, 9');
+    }
+   
+    // 2. check sample exists
+    const sample = await this.prisma.speakingSample.findUnique({
+      where: {
+        skillContentId_questionId_band: { skillContentId, questionId, band },
+      },
+    });
+    if (!sample) {
+      throw new NotFoundException(`No sample found for questionId: ${questionId}, band: ${band}`);
+    }
+   
+    // 3. check if user already has access — no charge if so
+    const existingAccess = await this.prisma.speakingSampleAccess.findUnique({
+      where: { userId_sampleId: { userId, sampleId: sample.id } },
+    });
+    if (existingAccess) {
+      return this.formatSampleResponse(sample, { charged: false });
+    }
+   
+    // 4. deduct 1 credit atomically
+    const userCredit = await this.prisma.userCredit.findUnique({ where: { userId } });
+    if (!userCredit || userCredit.balance < 1) {
+      throw new BadRequestException(
+        'Insufficient credits. Please purchase more credits to view sample answers.',
+      );
+    }
+   
+    // 5. deduct + create access + log transaction — all in one transaction
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // re-check balance inside transaction to prevent race conditions
+        const credit = await tx.userCredit.findUnique({ where: { userId } });
+        if (!credit || credit.balance < 1) {
+          throw new BadRequestException(
+            'Insufficient credits. Please purchase more credits to view sample answers.',
+          );
+        }
+   
+        const transaction = await tx.creditTransaction.create({
+          data: {
+            userId,
+            type:         'SPEND',
+            amount:       -1,
+            balanceBefore: credit.balance,
+            balanceAfter:  credit.balance - 1,
+            description:  `Sample answer: ${questionId} band ${band}`,
+            referenceId:  sample.id,
+            status:       'COMPLETED',
+          },
+        });
+   
+        await tx.userCredit.update({
+          where: { userId },
+          data:  { balance: { decrement: 1 } },
+        });
+   
+        await tx.speakingSampleAccess.create({
+          data: {
+            userId,
+            sampleId:      sample.id,
+            transactionId: transaction.id,
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException('Failed to process credit deduction');
+    }
+   
+    return this.formatSampleResponse(sample, { charged: true });
+  }
 
   // ================================================================
   // CONTENT — public browsing
@@ -768,6 +869,47 @@ Return the JSON score object only.`,
           questions: block.questions ? strip(block.questions) : undefined,
         })),
       })),
+    };
+  }
+  private extractHint(content: any, questionId: string): { hints: string[]; grammar_features?: any } | null {
+    // Part 1 — search inside topics
+    if (content.parts) {
+      for (const part of content.parts) {
+        // Part 1 questions inside topics
+        if (part.topics) {
+          for (const topic of part.topics) {
+            const q = topic.questions?.find((q: any) => q.id === questionId);
+            if (q) return { hints: q.hints, grammar_features: q.grammar_features };
+          }
+        }
+        // Part 2 cue card
+        if (part.cue_card?.id === questionId) {
+          return { hints: part.cue_card.hints, grammar_features: part.cue_card.grammar_features };
+        }
+        // Part 2 follow-up questions
+        if (part.followup_questions) {
+          const q = part.followup_questions.find((q: any) => q.id === questionId);
+          if (q) return { hints: q.hints, grammar_features: q.grammar_features };
+        }
+        // Part 3 questions
+        if (part.questions) {
+          const q = part.questions.find((q: any) => q.id === questionId);
+          if (q) return { hints: q.hints, grammar_features: q.grammar_features ?? null };
+        }
+      }
+    }
+    return null;
+  }
+   
+  private formatSampleResponse(sample: any, meta: { charged: boolean }) {
+    return {
+      sampleId:            sample.id,
+      questionId:          sample.questionId,
+      band:                sample.band,
+      answerText:          sample.answerText,
+      tip:                 sample.tip,
+      vocabularyHighlights: sample.vocabularyHighlights,
+      charged:             meta.charged,  // lets frontend know if credit was spent
     };
   }
 }

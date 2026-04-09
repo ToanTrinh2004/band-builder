@@ -9,7 +9,8 @@ import {
   UseGuards,
   Req,
   Get,
-  Query
+  Query,
+  ParseIntPipe
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Throttle, SkipThrottle } from '@nestjs/throttler'; // ✅ add this
@@ -37,7 +38,7 @@ const SkillTypePipe = new ParseEnumPipe(
 
 @Controller('practice')
 export class PracticeController {
-  constructor(private readonly practiceService: PracticeService) {}
+  constructor(private readonly practiceService: PracticeService) { }
 
   @SkipThrottle()
   @Get('tests')
@@ -61,6 +62,15 @@ export class PracticeController {
   @Get('skills/:skillContentId/preview')
   getSkillPreview(@Param('skillContentId') skillContentId: string) {
     return this.practiceService.getSkillContent(skillContentId);
+  }
+  // GET /practice/skills/:skillContentId/speaking/hint/:questionId
+  @SkipThrottle()
+  @Get('skills/:skillContentId/speaking/hint/:questionId')
+  getSpeakingHint(
+    @Param('skillContentId') skillContentId: string,
+    @Param('questionId') questionId: string,
+  ) {
+    return this.practiceService.getSpeakingHint(skillContentId, questionId);
   }
 
   // ── Protected routes — apply throttle ────────────────────────────────────
@@ -110,6 +120,25 @@ export class PracticeController {
   @Get(':testId')
   getTestContent(@Param('testId') testId: string, @Req() req: Request) {
     return this.practiceService.getTestContent(testId, req.user!.userId);
+  }
+  
+  // COSTS 1 CREDIT — deducts on first access, free on repeat
+  // GET /practice/skills/:skillContentId/speaking/sample/:questionId?band=7
+  @Throttle({ long: { ttl: 60000, limit: 30 } })
+  @UseGuards(JwtAuthGuard)
+  @Get('skills/:skillContentId/speaking/sample/:questionId')
+  getSpeakingSample(
+    @Param('skillContentId') skillContentId: string,
+    @Param('questionId') questionId: string,
+    @Query('band', new ParseIntPipe()) band: number,
+    @Req() req: Request,
+  ) {
+    return this.practiceService.getSpeakingSample(
+      skillContentId,
+      questionId,
+      band,
+      req.user!.userId,
+    );
   }
 
 }

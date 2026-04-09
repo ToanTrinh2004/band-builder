@@ -1,34 +1,80 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Req,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Headers,
+  RawBodyRequest,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import { UpdatePaymentDto } from './dto/update-payment.dto';
+import {
+  InitiatePaymentDto,
+  SePayWebhookDto,
+  PaymentQrResponseDto,
+  PaymentStatusResponseDto,
+} from './dto/payment.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt.guard'; // adjust path
+import { UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator'; // adjust path
 
+@ApiTags('Payment')
 @Controller('payment')
 export class PaymentController {
+  private readonly logger = new Logger(PaymentController.name);
+
   constructor(private readonly paymentService: PaymentService) {}
 
-  @Post()
-  create(@Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentService.create(createPaymentDto);
+  // ──────────────────────────────────────────────────────────
+  // POST /payment/initiate
+  // Authenticated — user selects a package, gets back QR data
+  // ──────────────────────────────────────────────────────────
+  @Post('initiate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a pending purchase & return VietQR data' })
+  @ApiResponse({ status: 201, type: PaymentQrResponseDto })
+  async initiatePayment(
+    @CurrentUser('id') userId: string,
+    @Body() dto: InitiatePaymentDto,
+  ): Promise<PaymentQrResponseDto> {
+    return this.paymentService.initiatePayment(userId, dto);
   }
 
-  @Get()
-  findAll() {
-    return this.paymentService.findAll();
+  // ──────────────────────────────────────────────────────────
+  // GET /payment/status/:transactionId
+  // Client polls while user is on the QR screen
+  // ──────────────────────────────────────────────────────────
+  @Get('status/:transactionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Poll status of a pending credit purchase' })
+  @ApiResponse({ status: 200, type: PaymentStatusResponseDto })
+  async getStatus(
+    @CurrentUser('id') userId: string,
+    @Param('transactionId') transactionId: string,
+  ): Promise<PaymentStatusResponseDto> {
+    return this.paymentService.getPaymentStatus(userId, transactionId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.paymentService.findOne(+id);
-  }
+  @Post('webhook/sepay')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'SePay webhook receiver — do not call manually' })
+  async sePayWebhook(
+    @Body() payload: SePayWebhookDto,
+    @Req() req: Request,
+  ): Promise<{ success: boolean }> {
+    this.logger.log(`SePay webhook received: memo=${payload.transferMemo} amount=${payload.amount}`);
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePaymentDto: UpdatePaymentDto) {
-    return this.paymentService.update(+id, updatePaymentDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.paymentService.remove(+id);
+    
+    const result = await this.paymentService.handleSePayWebhook(payload, req.body as object);
+    return result;
   }
 }
