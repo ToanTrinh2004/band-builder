@@ -63,3 +63,52 @@ export class PaymentStatusResponseDto {
   @ApiProperty({ nullable: true })
   amountVnd: number | null;
 }
+export class CreditPackageResponseDto {
+  @ApiProperty({
+    example: 'pkg_basic',
+    description: 'Unique identifier of the credit package',
+  })
+  id: string;
+
+  @ApiProperty({
+    example: 'Starter Pack',
+    description: 'Name of the credit package',
+  })
+  name: string;
+
+  @ApiProperty({
+    example: 100,
+    description: 'Number of credits included',
+  })
+  credits: number;
+
+  @ApiProperty({
+    example: 50000,
+    description: 'Price in VND',
+  })
+  priceVnd: number;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Bonus credits included',
+  })
+  bonusCredit: number;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether the package is active',
+  })
+  isActive: boolean;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Display order',
+  })
+  sortOrder: number;
+
+  @ApiProperty({
+    example: '2026-04-09T10:00:00.000Z',
+    description: 'Created date',
+  })
+  createdAt: Date;
+}

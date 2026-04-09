@@ -19,6 +19,7 @@ import {
   SePayWebhookDto,
   PaymentQrResponseDto,
   PaymentStatusResponseDto,
+  CreditPackageResponseDto,
 } from './dto/payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard'; // adjust path
 import { UseGuards } from '@nestjs/common';
@@ -47,6 +48,12 @@ export class PaymentController {
     return this.paymentService.initiatePayment(userId, dto);
   }
 
+  @Get('packages')
+  @ApiOperation({ summary: 'Get all available credit packages' })
+  @ApiResponse({ status: 200, type: [CreditPackageResponseDto] })
+  async getCreditPackages(): Promise<CreditPackageResponseDto[]> {
+    return this.paymentService.getAllCreditPackages();
+  }
   // ──────────────────────────────────────────────────────────
   // GET /payment/status/:transactionId
   // Client polls while user is on the QR screen

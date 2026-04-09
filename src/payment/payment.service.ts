@@ -227,6 +227,12 @@ export class PaymentService {
     };
   }
 
+  async getAllCreditPackages() {
+    return this.prisma.creditPackage.findMany({
+      where: { isActive: true },
+      orderBy: { priceVnd: 'asc' },
+    });
+  }
   // ──────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ──────────────────────────────────────────────────────────
