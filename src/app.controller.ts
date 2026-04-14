@@ -7,7 +7,7 @@ export class AppController {
 
   @Get()
   getHello(): string {
-    return this.appService.getHello();
+    return "fffffff"
   }
   @Get('test')
 test(@Req() req) {
@@ -15,6 +15,7 @@ test(@Req() req) {
     message: 'OAuth success',
     query: req.query,
   };
+
   
 }
 
