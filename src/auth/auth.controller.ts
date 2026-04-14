@@ -1,78 +1,68 @@
-import { Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { ApiCookieAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthService } from './auth.service';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { JwtService } from '@nestjs/jwt';
-import * as crypto from 'crypto';
 import { Throttle } from '@nestjs/throttler';
+import { Response } from 'express';
+import { AuthService } from './auth.service';
+import { AuthTokensDto } from './dto/auth-tokens.dto';
+import { MeResponseDto } from './dto/me-response.dto';
+
+const THROTTLE = { short: { ttl: 60000, limit: 5 } };
+
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService,
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-  ) { }
+  constructor(private readonly authService: AuthService) {}
 
-
-  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  @Throttle(THROTTLE)
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() { }
+  @ApiOperation({ summary: 'Initiate Google OAuth flow' })
+  @ApiResponse({ status: 302, description: 'Redirects to Google login' })
+  async googleAuth() {}
 
-  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  @Throttle(THROTTLE)
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleCallback(@Req() req, @Res() res) {
+  @ApiOperation({ summary: 'Google OAuth callback — sets auth cookies' })
+  @ApiResponse({ status: 302, description: 'Redirects to frontend after login' })
+  async googleCallback(@Req() req, @Res() res: Response) {
     const data = await this.authService.validateGoogleUser(req.user);
 
-    res.cookie('accessToken', data.access_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 15 * 60 * 1000,
-    });
+    const cookieOptions = { httpOnly: true, secure: true, sameSite: 'none' as const };
 
-    res.cookie('refreshToken', data.refresh_token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    console.log('Set cookies:', {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-    });
+    res.cookie('accessToken', data.accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    res.cookie('refreshToken', data.refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
-    return res.redirect('https://hydropic-mona-overflatly.ngrok-free.dev');
+    if (!process.env.FRONTEND_URL) {
+      throw new Error('FRONTEND_URL is not defined in the environment variables');
+    }
+    return res.redirect(process.env.FRONTEND_URL);
   }
-  @Throttle({ short: { ttl: 60000, limit: 5 } })
+
+  @Throttle(THROTTLE)
   @Post('refresh')
-  async refresh(@Req() req, @Res({ passthrough: true }) res: Response) {
+  @ApiCookieAuth('refreshToken')
+  @ApiOperation({ summary: 'Refresh access token using refresh token cookie' })
+  @ApiResponse({ status: 200, type: AuthTokensDto })
+  @ApiResponse({ status: 401, description: 'Invalid or missing refresh token' })
+  async refresh(@Req() req, @Res({ passthrough: true }) res: Response): Promise<AuthTokensDto> {
     return this.authService.refreshTokens(req.cookies.refreshToken, res);
   }
-  @Throttle({ short: { ttl: 60000, limit: 5 } })
+
+  @Throttle(THROTTLE)
   @Get('me')
-  async getMe(@Req() req) {
-    const token = req.cookies.accessToken;
-
-    if (!token) {
-      throw new UnauthorizedException('No access token');
-    }
-
-    const payload = this.jwtService.verify(token, {
-      secret: process.env.JWT_SECRET,
-    });
-
-    return {
-      userId: payload.sub,
-      email: payload.email,
-    };
+  @ApiCookieAuth('accessToken')
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  @ApiResponse({ status: 200, type: MeResponseDto })
+  @ApiResponse({ status: 401, description: 'No or invalid access token' })
+  async getMe(@Req() req): Promise<MeResponseDto> {
+    return this.authService.getMe(req.cookies.accessToken);
   }
+
   @Get('test-cookie')
+  @ApiOperation({ summary: 'Debug endpoint — inspect cookies' })
   test(@Req() req) {
-    return {
-      cookies: req.cookies,
-    };
+    return { cookies: req.cookies };
   }
 }
