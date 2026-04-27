@@ -10,7 +10,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: 'https://hydropic-mona-overflatly.ngrok-free.dev',
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   });
 
