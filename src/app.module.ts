@@ -11,6 +11,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; 
 import { CustomThrottlerGuard } from './auth/guards/customThrottler.guard';
 import { PaymentModule } from './payment/payment.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PaymentModule } from './payment/payment.module';
     AdminModule,
     CloudinaryModule,
     PaymentModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [
