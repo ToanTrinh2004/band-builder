@@ -179,4 +179,35 @@ export class PracticeController {
       req.user!.userId,
     );
   }
+  @Throttle({ long: { ttl: 60000, limit: 5 } })
+@UseGuards(JwtAuthGuard)
+@Post('tests/:testId/skills/writing/task1/submit')
+@HttpCode(HttpStatus.OK)
+@ApiBearerAuth()
+@ApiOperation({ summary: 'Submit Writing Task 1 — hits Claude API (5 req/min)' })
+@ApiParam({ name: 'testId', example: 'clx1abc123' })
+@ApiResponse({ status: 200, description: 'Task 1 graded and result returned' })
+submitWritingTask1(
+  @Param('testId') testId: string,
+  @Body() dto: SubmitSkillDto,
+  @Req() req: Request,
+) {
+  return this.practiceService.submitWritingTask(testId, 1, dto, req.user!.userId);
+}
+
+@Throttle({ long: { ttl: 60000, limit: 5 } })
+@UseGuards(JwtAuthGuard)
+@Post('tests/:testId/skills/writing/task2/submit')
+@HttpCode(HttpStatus.OK)
+@ApiBearerAuth()
+@ApiOperation({ summary: 'Submit Writing Task 2 — hits Claude API (5 req/min). Finalises overall band.' })
+@ApiParam({ name: 'testId', example: 'clx1abc123' })
+@ApiResponse({ status: 200, description: 'Task 2 graded, overall band computed, attempt closed' })
+submitWritingTask2(
+  @Param('testId') testId: string,
+  @Body() dto: SubmitSkillDto,
+  @Req() req: Request,
+) {
+  return this.practiceService.submitWritingTask(testId, 2, dto, req.user!.userId);
+}
 }

@@ -154,9 +154,6 @@ export class PracticeService {
   }
 
   async submitSkill(testId: string, skillType: SkillTypeName, dto: SubmitSkillDto, userId: string) {
-    // writing has its own Claude-based flow
-    if (skillType === 'writing') return this.submitWriting(testId, dto, userId);
-
     const skillTypeId = this.resolveSkillTypeId(skillType);
 
     const test = await this.prisma.test.findUnique({
@@ -273,8 +270,13 @@ export class PracticeService {
   // WRITING — Claude AI evaluation
   // ================================================================
 
-  async submitWriting(testId: string, dto: SubmitSkillDto, userId: string) {
-    console.log('Submitting writing skill with answers:', dto.answers);
+ 
+  async submitWritingTask(
+    testId: string,
+    taskNumber: 1 | 2,
+    dto: SubmitSkillDto,
+    userId: string,
+  ) {
     const test = await this.prisma.test.findUnique({
       where: { id: testId },
       include: {
@@ -289,16 +291,16 @@ export class PracticeService {
         },
       },
     });
-
+  
     if (!test) throw new NotFoundException('Test not found');
     if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
     if (test.status !== 'IN_PROGRESS') throw new BadRequestException(`Test is already ${test.status}`);
-
+  
     const writingSkill = test.practiceTest.practiceTestSkills.find(
       (pts) => pts.skillTest.skillTypeId === SKILL_TYPE_MAP['writing'],
     );
     if (!writingSkill) throw new NotFoundException('No writing skill found in this test');
-
+  
     const attempt = await this.prisma.testSkillAttempt.findUnique({
       where: { testId_skillTestId: { testId, skillTestId: writingSkill.skillTest.id } },
     });
@@ -307,158 +309,297 @@ export class PracticeService {
         `Start the writing attempt first: POST /practice/tests/${testId}/skills/writing/start`,
       );
     }
-    if (attempt.submittedAt) throw new ConflictException('Writing has already been submitted');
-
-    // pull essays from submitted answers
-    const task1Essay = dto.answers.find((a) => a.questionId === 'task1')?.userAnswer?.trim();
-    const task2Essay = dto.answers.find((a) => a.questionId === 'task2')?.userAnswer?.trim();
-
-    if (!task1Essay) throw new BadRequestException('Task 1 essay is missing (questionId: "task1")');
-    if (!task2Essay) throw new BadRequestException('Task 2 essay is missing (questionId: "task2")');
-
-    const wordCount  = (text: string) => text.split(/\s+/).filter(Boolean).length;
-    const task1Words = wordCount(task1Essay);
-    const task2Words = wordCount(task2Essay);
-
-    if (task1Words < 100) throw new BadRequestException(`Task 1 too short — ${task1Words} words, need at least 100`);
-    if (task2Words < 200) throw new BadRequestException(`Task 2 too short — ${task2Words} words, need at least 200`);
-
-    // pull question prompts from stored content if available
-    const content      = writingSkill.skillTest.skillContent.contentJson as any;
-    const task1Question = content?.task1?.question ?? '';
-    const task2Question = content?.task2?.question ?? '';
-
-    // evaluate both tasks in parallel — no reason to wait for one before the other
-    let task1Score: IELTSScore;
-    let task2Score: IELTSScore;
+  
+    const questionId = `task${taskNumber}`;
+    const essay = dto.answers.find((a) => a.questionId === questionId)?.userAnswer?.trim();
+    if (!essay) throw new BadRequestException(`Essay is missing (questionId: "${questionId}")`);
+  
+    const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
+    const words = wordCount(essay);
+    const minWords = taskNumber === 1 ? 100 : 200;
+    if (words < minWords) {
+      throw new BadRequestException(
+        `Task ${taskNumber} too short — ${words} words, need at least ${minWords}`,
+      );
+    }
+  
+    const existing = await this.prisma.testAnswer.findFirst({
+      where: { attemptId: attempt.id, questionId },
+    });
+    if (existing) throw new ConflictException(`Task ${taskNumber} has already been submitted`);
+  
+    const content = writingSkill.skillTest.skillContent.contentJson as any;
+    const question = content?.[questionId]?.question ?? '';
+  
+    let taskScore: IELTSScore;
     try {
-      [task1Score, task2Score] = await Promise.all([
-        this.evaluateWithClaude('task1', task1Question, task1Essay),
-        this.evaluateWithClaude('task2', task2Question, task2Essay),
-      ]);
+      taskScore = await this.evaluateWithClaude(
+        taskNumber === 1 ? 'task1' : 'task2',
+        question,
+        essay,
+      );
     } catch {
       throw new InternalServerErrorException('Claude evaluation failed — please try again');
     }
-
-    // Task 1 = 1/3, Task 2 = 2/3 of the final band (official IELTS weighting)
-    const overallBand =
-      Math.round((task1Score.overall_band / 3 + (task2Score.overall_band * 2) / 3) * 2) / 2;
-
-    // shorthand so the create block below stays readable
-    const t1 = task1Score.criteria;
-    const t2 = task2Score.criteria;
-
+  
     try {
       await this.prisma.$transaction(async (tx) => {
-        // store raw essays so nothing is lost
-        await tx.testAnswer.createMany({
-          data: [
-            { attemptId: attempt.id, questionId: 'task1', userAnswer: task1Essay, isCorrect: null, correctAnswer: null },
-            { attemptId: attempt.id, questionId: 'task2', userAnswer: task2Essay, isCorrect: null, correctAnswer: null },
-          ],
-          skipDuplicates: true,
-        });
-
-        // store full Claude breakdown
-        await tx.writingEvaluation.create({
+        // store raw essay
+        await tx.testAnswer.create({
           data: {
-            attemptId:   attempt.id,
-            overallBand,
-
-            // Task 1
-            task1Band:                         task1Score.overall_band,
-            task1TaskAchievement:              t1.task_achievement!.score,
-            task1TaskAchievementRationale:     t1.task_achievement!.rationale,
-            task1TaskAchievementExamples:      t1.task_achievement!.examples,
-            task1TaskAchievementSuggestions:   t1.task_achievement!.suggestions,
-            task1CoherenceCohesion:            t1.coherence_and_cohesion.score,
-            task1CoherenceCohesionRationale:   t1.coherence_and_cohesion.rationale,
-            task1CoherenceCohesionExamples:    t1.coherence_and_cohesion.examples,
-            task1CoherenceCohesionSuggestions: t1.coherence_and_cohesion.suggestions,
-            task1LexicalResource:              t1.lexical_resource.score,
-            task1LexicalResourceRationale:     t1.lexical_resource.rationale,
-            task1LexicalResourceExamples:      t1.lexical_resource.examples,
-            task1LexicalResourceSuggestions:   t1.lexical_resource.suggestions,
-            task1GrammaticalRange:              t1.grammatical_range_and_accuracy.score,
-            task1GrammaticalRangeRationale:     t1.grammatical_range_and_accuracy.rationale,
-            task1GrammaticalRangeExamples:      t1.grammatical_range_and_accuracy.examples,
-            task1GrammaticalRangeSuggestions:   t1.grammatical_range_and_accuracy.suggestions,
-            task1ImageFeedback:                task1Score.image_feedback ?? Prisma.JsonNull,
-            task1OverallFeedback:              task1Score.overall_feedback,
-            task1KeyStrengths:                 task1Score.key_strengths,
-            task1KeyWeaknesses:                task1Score.key_weaknesses,
-            task1PriorityImprovements:         task1Score.priority_improvements,
-            task1Essay,
-            task1WordCount:                    task1Words,
-
-            // Task 2
-            task2Band:                         task2Score.overall_band,
-            task2TaskResponse:                 t2.task_response!.score,
-            task2TaskResponseRationale:        t2.task_response!.rationale,
-            task2TaskResponseExamples:         t2.task_response!.examples,
-            task2TaskResponseSuggestions:      t2.task_response!.suggestions,
-            task2CoherenceCohesion:            t2.coherence_and_cohesion.score,
-            task2CoherenceCohesionRationale:   t2.coherence_and_cohesion.rationale,
-            task2CoherenceCohesionExamples:    t2.coherence_and_cohesion.examples,
-            task2CoherenceCohesionSuggestions: t2.coherence_and_cohesion.suggestions,
-            task2LexicalResource:              t2.lexical_resource.score,
-            task2LexicalResourceRationale:     t2.lexical_resource.rationale,
-            task2LexicalResourceExamples:      t2.lexical_resource.examples,
-            task2LexicalResourceSuggestions:   t2.lexical_resource.suggestions,
-            task2GrammaticalRange:              t2.grammatical_range_and_accuracy.score,
-            task2GrammaticalRangeRationale:     t2.grammatical_range_and_accuracy.rationale,
-            task2GrammaticalRangeExamples:      t2.grammatical_range_and_accuracy.examples,
-            task2GrammaticalRangeSuggestions:   t2.grammatical_range_and_accuracy.suggestions,
-            task2OverallFeedback:              task2Score.overall_feedback,
-            task2KeyStrengths:                 task2Score.key_strengths,
-            task2KeyWeaknesses:                task2Score.key_weaknesses,
-            task2PriorityImprovements:         task2Score.priority_improvements,
-            task2Essay,
-            task2WordCount:                    task2Words,
+            attemptId:     attempt.id,
+            questionId,
+            userAnswer:    essay,
+            isCorrect:     null,
+            correctAnswer: null,
           },
         });
-
-        // mirror band score to the attempt so history queries stay uniform
-        await tx.testSkillAttempt.update({
-          where: { id: attempt.id },
-          data: {
-            bandScore:    overallBand,
-            timeSpentSec: dto.timeSpentSec,
-            submittedAt:  new Date(),
-          },
-        });
-
-        await this.maybeCompleteTest(testId, tx);
+  
+        if (taskNumber === 1) {
+          const t1 = taskScore.criteria;
+  
+          await tx.writingEvaluation.upsert({
+            where: { attemptId: attempt.id },
+            create: {
+              attemptId:   attempt.id,
+              overallBand: 0,
+  
+              task1Band:                         taskScore.overall_band,
+              task1TaskAchievement:              t1.task_achievement!.score,
+              task1TaskAchievementRationale:     t1.task_achievement!.rationale,
+              task1TaskAchievementExamples:      t1.task_achievement!.examples,
+              task1TaskAchievementSuggestions:   t1.task_achievement!.suggestions,
+              task1CoherenceCohesion:            t1.coherence_and_cohesion.score,
+              task1CoherenceCohesionRationale:   t1.coherence_and_cohesion.rationale,
+              task1CoherenceCohesionExamples:    t1.coherence_and_cohesion.examples,
+              task1CoherenceCohesionSuggestions: t1.coherence_and_cohesion.suggestions,
+              task1LexicalResource:              t1.lexical_resource.score,
+              task1LexicalResourceRationale:     t1.lexical_resource.rationale,
+              task1LexicalResourceExamples:      t1.lexical_resource.examples,
+              task1LexicalResourceSuggestions:   t1.lexical_resource.suggestions,
+              task1GrammaticalRange:             t1.grammatical_range_and_accuracy.score,
+              task1GrammaticalRangeRationale:    t1.grammatical_range_and_accuracy.rationale,
+              task1GrammaticalRangeExamples:     t1.grammatical_range_and_accuracy.examples,
+              task1GrammaticalRangeSuggestions:  t1.grammatical_range_and_accuracy.suggestions,
+              task1ImageFeedback:                taskScore.image_feedback ?? Prisma.JsonNull,
+              task1OverallFeedback:              taskScore.overall_feedback,
+              task1KeyStrengths:                 taskScore.key_strengths,
+              task1KeyWeaknesses:                taskScore.key_weaknesses,
+              task1PriorityImprovements:         taskScore.priority_improvements,
+              task1Essay:                        essay,
+              task1WordCount:                    words,
+  
+              // task2 placeholders
+              task2Band:                         0,
+              task2TaskResponse:                 0,
+              task2TaskResponseRationale:        '',
+              task2TaskResponseExamples:         '',
+              task2TaskResponseSuggestions:      '',
+              task2CoherenceCohesion:            0,
+              task2CoherenceCohesionRationale:   '',
+              task2CoherenceCohesionExamples:    '',
+              task2CoherenceCohesionSuggestions: '',
+              task2LexicalResource:              0,
+              task2LexicalResourceRationale:     '',
+              task2LexicalResourceExamples:      '',
+              task2LexicalResourceSuggestions:   '',
+              task2GrammaticalRange:             0,
+              task2GrammaticalRangeRationale:    '',
+              task2GrammaticalRangeExamples:     '',
+              task2GrammaticalRangeSuggestions:  '',
+              task2OverallFeedback:              '',
+              task2KeyStrengths:                 [],
+              task2KeyWeaknesses:                [],
+              task2PriorityImprovements:         [],
+              task2Essay:                        '',
+              task2WordCount:                    0,
+            },
+            update: {
+              // task1 already saved — patch only task1 fields in case of retry
+              task1Band:                         taskScore.overall_band,
+              task1TaskAchievement:              t1.task_achievement!.score,
+              task1TaskAchievementRationale:     t1.task_achievement!.rationale,
+              task1TaskAchievementExamples:      t1.task_achievement!.examples,
+              task1TaskAchievementSuggestions:   t1.task_achievement!.suggestions,
+              task1CoherenceCohesion:            t1.coherence_and_cohesion.score,
+              task1CoherenceCohesionRationale:   t1.coherence_and_cohesion.rationale,
+              task1CoherenceCohesionExamples:    t1.coherence_and_cohesion.examples,
+              task1CoherenceCohesionSuggestions: t1.coherence_and_cohesion.suggestions,
+              task1LexicalResource:              t1.lexical_resource.score,
+              task1LexicalResourceRationale:     t1.lexical_resource.rationale,
+              task1LexicalResourceExamples:      t1.lexical_resource.examples,
+              task1LexicalResourceSuggestions:   t1.lexical_resource.suggestions,
+              task1GrammaticalRange:             t1.grammatical_range_and_accuracy.score,
+              task1GrammaticalRangeRationale:    t1.grammatical_range_and_accuracy.rationale,
+              task1GrammaticalRangeExamples:     t1.grammatical_range_and_accuracy.examples,
+              task1GrammaticalRangeSuggestions:  t1.grammatical_range_and_accuracy.suggestions,
+              task1ImageFeedback:                taskScore.image_feedback ?? Prisma.JsonNull,
+              task1OverallFeedback:              taskScore.overall_feedback,
+              task1KeyStrengths:                 taskScore.key_strengths,
+              task1KeyWeaknesses:                taskScore.key_weaknesses,
+              task1PriorityImprovements:         taskScore.priority_improvements,
+              task1Essay:                        essay,
+              task1WordCount:                    words,
+            },
+          });
+  
+          // task2 was submitted first — compute overall now that we have both
+          const evalRow = await tx.writingEvaluation.findUnique({
+            where: { attemptId: attempt.id },
+          });
+  
+          if (evalRow?.task2Band) {
+            const overallBand =
+              Math.round((taskScore.overall_band / 3 + (evalRow.task2Band * 2) / 3) * 2) / 2;
+  
+            await tx.writingEvaluation.update({
+              where: { attemptId: attempt.id },
+              data: { overallBand },
+            });
+  
+            await tx.testSkillAttempt.update({
+              where: { id: attempt.id },
+              data: {
+                bandScore:    overallBand,
+                timeSpentSec: dto.timeSpentSec ?? null,
+                submittedAt:  new Date(),
+              },
+            });
+  
+            await this.maybeCompleteTest(testId, tx);
+          }
+        } else {
+          // task2 branch
+          const t2 = taskScore.criteria;
+  
+          const evalRow = await tx.writingEvaluation.findUnique({
+            where: { attemptId: attempt.id },
+          });
+  
+          const task1Band  = evalRow?.task1Band ?? 0;
+          const bothDone   = !!evalRow?.task1Band;
+          const overallBand = bothDone
+            ? Math.round((task1Band / 3 + (taskScore.overall_band * 2) / 3) * 2) / 2
+            : taskScore.overall_band; // placeholder until task1 arrives
+  
+          await tx.writingEvaluation.upsert({
+            where: { attemptId: attempt.id },
+            create: {
+              attemptId:   attempt.id,
+              overallBand,
+  
+              // task1 placeholders
+              task1Band:                         0,
+              task1TaskAchievement:              0,
+              task1TaskAchievementRationale:     '',
+              task1TaskAchievementExamples:      '',
+              task1TaskAchievementSuggestions:   '',
+              task1CoherenceCohesion:            0,
+              task1CoherenceCohesionRationale:   '',
+              task1CoherenceCohesionExamples:    '',
+              task1CoherenceCohesionSuggestions: '',
+              task1LexicalResource:              0,
+              task1LexicalResourceRationale:     '',
+              task1LexicalResourceExamples:      '',
+              task1LexicalResourceSuggestions:   '',
+              task1GrammaticalRange:             0,
+              task1GrammaticalRangeRationale:    '',
+              task1GrammaticalRangeExamples:     '',
+              task1GrammaticalRangeSuggestions:  '',
+              task1ImageFeedback:                Prisma.JsonNull,
+              task1OverallFeedback:              '',
+              task1KeyStrengths:                 [],
+              task1KeyWeaknesses:                [],
+              task1PriorityImprovements:         [],
+              task1Essay:                        '',
+              task1WordCount:                    0,
+  
+              task2Band:                         taskScore.overall_band,
+              task2TaskResponse:                 t2.task_response!.score,
+              task2TaskResponseRationale:        t2.task_response!.rationale,
+              task2TaskResponseExamples:         t2.task_response!.examples,
+              task2TaskResponseSuggestions:      t2.task_response!.suggestions,
+              task2CoherenceCohesion:            t2.coherence_and_cohesion.score,
+              task2CoherenceCohesionRationale:   t2.coherence_and_cohesion.rationale,
+              task2CoherenceCohesionExamples:    t2.coherence_and_cohesion.examples,
+              task2CoherenceCohesionSuggestions: t2.coherence_and_cohesion.suggestions,
+              task2LexicalResource:              t2.lexical_resource.score,
+              task2LexicalResourceRationale:     t2.lexical_resource.rationale,
+              task2LexicalResourceExamples:      t2.lexical_resource.examples,
+              task2LexicalResourceSuggestions:   t2.lexical_resource.suggestions,
+              task2GrammaticalRange:             t2.grammatical_range_and_accuracy.score,
+              task2GrammaticalRangeRationale:    t2.grammatical_range_and_accuracy.rationale,
+              task2GrammaticalRangeExamples:     t2.grammatical_range_and_accuracy.examples,
+              task2GrammaticalRangeSuggestions:  t2.grammatical_range_and_accuracy.suggestions,
+              task2OverallFeedback:              taskScore.overall_feedback,
+              task2KeyStrengths:                 taskScore.key_strengths,
+              task2KeyWeaknesses:                taskScore.key_weaknesses,
+              task2PriorityImprovements:         taskScore.priority_improvements,
+              task2Essay:                        essay,
+              task2WordCount:                    words,
+            },
+            update: {
+              overallBand,
+              task2Band:                         taskScore.overall_band,
+              task2TaskResponse:                 t2.task_response!.score,
+              task2TaskResponseRationale:        t2.task_response!.rationale,
+              task2TaskResponseExamples:         t2.task_response!.examples,
+              task2TaskResponseSuggestions:      t2.task_response!.suggestions,
+              task2CoherenceCohesion:            t2.coherence_and_cohesion.score,
+              task2CoherenceCohesionRationale:   t2.coherence_and_cohesion.rationale,
+              task2CoherenceCohesionExamples:    t2.coherence_and_cohesion.examples,
+              task2CoherenceCohesionSuggestions: t2.coherence_and_cohesion.suggestions,
+              task2LexicalResource:              t2.lexical_resource.score,
+              task2LexicalResourceRationale:     t2.lexical_resource.rationale,
+              task2LexicalResourceExamples:      t2.lexical_resource.examples,
+              task2LexicalResourceSuggestions:   t2.lexical_resource.suggestions,
+              task2GrammaticalRange:             t2.grammatical_range_and_accuracy.score,
+              task2GrammaticalRangeRationale:    t2.grammatical_range_and_accuracy.rationale,
+              task2GrammaticalRangeExamples:     t2.grammatical_range_and_accuracy.examples,
+              task2GrammaticalRangeSuggestions:  t2.grammatical_range_and_accuracy.suggestions,
+              task2OverallFeedback:              taskScore.overall_feedback,
+              task2KeyStrengths:                 taskScore.key_strengths,
+              task2KeyWeaknesses:                taskScore.key_weaknesses,
+              task2PriorityImprovements:         taskScore.priority_improvements,
+              task2Essay:                        essay,
+              task2WordCount:                    words,
+            },
+          });
+  
+          if (bothDone) {
+            await tx.testSkillAttempt.update({
+              where: { id: attempt.id },
+              data: {
+                bandScore:    overallBand,
+                timeSpentSec: dto.timeSpentSec ?? null,
+                submittedAt:  new Date(),
+              },
+            });
+  
+            await this.maybeCompleteTest(testId, tx);
+          }
+        }
       });
     } catch (error) {
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to save writing results');
     }
-
+  
     return {
       status:     'success',
-      task_type:  'writing',
-      word_count: { task1: task1Words, task2: task2Words },
+      task_type:  `writing_task${taskNumber}`,
+      word_count: words,
       scored_at:  new Date().toISOString(),
       result: {
-        overall_band: overallBand,
-        task1: {
-          band:                  task1Score.overall_band,
-          criteria:              task1Score.criteria,
-          ...(task1Score.image_feedback && { image_feedback: task1Score.image_feedback }),
-          overall_feedback:      task1Score.overall_feedback,
-          key_strengths:         task1Score.key_strengths,
-          key_weaknesses:        task1Score.key_weaknesses,
-          priority_improvements: task1Score.priority_improvements,
-        },
-        task2: {
-          band:                  task2Score.overall_band,
-          criteria:              task2Score.criteria,
-          overall_feedback:      task2Score.overall_feedback,
-          key_strengths:         task2Score.key_strengths,
-          key_weaknesses:        task2Score.key_weaknesses,
-          priority_improvements: task2Score.priority_improvements,
-        },
+        band:                  taskScore.overall_band,
+        criteria:              taskScore.criteria,
+        ...(taskNumber === 1 && taskScore.image_feedback
+          ? { image_feedback: taskScore.image_feedback }
+          : {}),
+        overall_feedback:      taskScore.overall_feedback,
+        key_strengths:         taskScore.key_strengths,
+        key_weaknesses:        taskScore.key_weaknesses,
+        priority_improvements: taskScore.priority_improvements,
       },
     };
   }
