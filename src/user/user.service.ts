@@ -11,6 +11,9 @@ import {
   UserStatsDto,
   UserActivityDto,
   ProfileResponseDto,
+  TestResultDto,
+  TestResultsResponseDto,
+  TestAttemptDetailDto,
 } from './dto/user.dto';
 
 // How many recent activity rows to return
@@ -70,6 +73,88 @@ export class UserService {
 
     return this.mapUserProfile(updated, updated.userCredit);
   }
+// ──────────────────────────────────────────────────────────
+// GET /user/tests  →  TestResultsResponseDto
+// Returns all tests for the user with per-skill attempt detail
+// ──────────────────────────────────────────────────────────
+async getTestResults(userId: string): Promise<TestResultsResponseDto> {
+  const tests = await this.prisma.test.findMany({
+    where: { userId },
+    orderBy: { startedAt: 'desc' },
+    include: {
+      practiceTest: true,
+      skillAttempts: {
+        include: {
+          skillTest: {
+            include: { skillType: true },
+          },
+        },
+      },
+    },
+  });
+
+  const mapped: TestResultDto[] = tests.map((test) => ({
+    testId: test.id,
+    title: test.practiceTest.title,
+    status: test.status,
+    totalScore: test.totalScore ?? null,
+    maxScore: test.maxScore ?? null,
+    startedAt: test.startedAt.toISOString(),
+    completedAt: test.completedAt?.toISOString() ?? null,
+    skillAttempts: test.skillAttempts.map((attempt) => ({
+      attemptId: attempt.id,
+      skill: attempt.skillTest.skillType.name,
+      bandScore: attempt.bandScore ?? null,
+      score: attempt.score ?? null,
+      maxScore: attempt.maxScore ?? null,
+      timeSpentSec: attempt.timeSpentSec ?? null,
+      submittedAt: attempt.submittedAt?.toISOString() ?? null,
+    })),
+  }));
+
+  return { tests: mapped, total: mapped.length };
+}
+// ──────────────────────────────────────────────────────────
+// GET /user/attempts/:attemptId  →  TestAttemptDetailDto
+// Returns every answer the user submitted for a skill attempt
+// ──────────────────────────────────────────────────────────
+async getAttemptDetail(
+  userId: string,
+  attemptId: string,
+): Promise<TestAttemptDetailDto> {
+  const attempt = await this.prisma.testSkillAttempt.findUnique({
+    where: { id: attemptId },
+    include: {
+      test: true,                          // to verify ownership
+      skillTest: { include: { skillType: true } },
+      answers: { orderBy: { createdAt: 'asc' } },
+    },
+  });
+
+  if (!attempt) throw new NotFoundException('Attempt not found');
+
+  // Guard: the attempt must belong to the requesting user
+  if (attempt.test.userId !== userId)
+    throw new NotFoundException('Attempt not found');
+
+  return {
+    attemptId: attempt.id,
+    skill: attempt.skillTest.skillType.name,
+    bandScore: attempt.bandScore ?? null,
+    score: attempt.score ?? null,
+    maxScore: attempt.maxScore ?? null,
+    timeSpentSec: attempt.timeSpentSec ?? null,
+    submittedAt: attempt.submittedAt?.toISOString() ?? null,
+    answers: attempt.answers.map((a) => ({
+      answerId: a.id,
+      questionId: a.questionId,
+      userAnswer: a.userAnswer ?? null,
+      correctAnswer: a.correctAnswer ?? null,
+      isCorrect: a.isCorrect ?? null,
+      timeSpentSec: a.timeSpentSec ?? null,
+    })),
+  };
+}
 
   // ──────────────────────────────────────────────────────────
   // PRIVATE HELPERS

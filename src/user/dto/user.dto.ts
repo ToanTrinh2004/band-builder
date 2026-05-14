@@ -56,3 +56,104 @@ export class ProfileResponseDto {
   @ApiProperty({ type: UserStatsDto }) stats: UserStatsDto;
   @ApiProperty({ type: [UserActivityDto] }) recentActivities: UserActivityDto[];
 }
+export class SkillAttemptResultDto {
+  @ApiProperty({ example: 'uuid' })
+  attemptId: string;
+
+  @ApiProperty({ example: 'Reading' })
+  skill: string;
+
+  @ApiProperty({ example: 7.5, nullable: true })
+  bandScore: number | null;
+
+  @ApiProperty({ example: 32, nullable: true })
+  score: number | null;
+
+  @ApiProperty({ example: 40, nullable: true })
+  maxScore: number | null;
+
+  @ApiProperty({ example: 1200, nullable: true })
+  timeSpentSec: number | null;
+
+  @ApiProperty({ example: '2024-01-01T00:00:00.000Z', nullable: true })
+  submittedAt: string | null;
+}
+
+export class TestResultDto {
+  @ApiProperty({ example: 'uuid' })
+  testId: string;
+
+  @ApiProperty({ example: 'IELTS Practice Test 3' })
+  title: string;
+
+  @ApiProperty({ enum: ['IN_PROGRESS', 'COMPLETED', 'ABANDONED'] })
+  status: string;
+
+  @ApiProperty({ example: 7.0, nullable: true })
+  totalScore: number | null;
+
+  @ApiProperty({ example: 9.0, nullable: true })
+  maxScore: number | null;
+
+  @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
+  startedAt: string;
+
+  @ApiProperty({ example: '2024-01-01T01:00:00.000Z', nullable: true })
+  completedAt: string | null;
+
+  @ApiProperty({ type: [SkillAttemptResultDto] })
+  skillAttempts: SkillAttemptResultDto[];
+}
+
+export class TestResultsResponseDto {
+  @ApiProperty({ type: [TestResultDto] })
+  tests: TestResultDto[];
+
+  @ApiProperty({ example: 12 })
+  total: number;
+}
+export class TestAnswerDetailDto {
+  @ApiProperty({ example: 'uuid' })
+  answerId: string;
+
+  @ApiProperty({ example: 'q1' })
+  questionId: string;
+
+  @ApiProperty({ example: 'B', nullable: true })
+  userAnswer: string | null;
+
+  @ApiProperty({ example: 'C', nullable: true })
+  correctAnswer: string | null;
+
+  @ApiProperty({ example: false, nullable: true })
+  isCorrect: boolean | null;
+
+  @ApiProperty({ example: 45, nullable: true })
+  timeSpentSec: number | null;
+}
+
+export class TestAttemptDetailDto {
+  @ApiProperty({ example: 'uuid' })
+  attemptId: string;
+
+  @ApiProperty({ example: 'Reading' })
+  skill: string;
+
+  @ApiProperty({ example: 7.5, nullable: true })
+  bandScore: number | null;
+
+  @ApiProperty({ example: 32, nullable: true })
+  score: number | null;
+
+  @ApiProperty({ example: 40, nullable: true })
+  maxScore: number | null;
+
+  @ApiProperty({ example: 1200, nullable: true })
+  timeSpentSec: number | null;
+
+  @ApiProperty({ example: '2024-01-01T01:00:00.000Z', nullable: true })
+  submittedAt: string | null;
+
+  @ApiProperty({ type: [TestAnswerDetailDto] })
+  answers: TestAnswerDetailDto[];
+}

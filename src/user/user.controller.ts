@@ -8,6 +8,7 @@ import {
   HttpStatus,
   UseGuards,
   Logger,
+  Param,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +22,8 @@ import {
   UpdateUserProfileDto,
   UserProfileDto,
   ProfileResponseDto,
+  TestResultsResponseDto,
+  TestAttemptDetailDto,
 } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -32,7 +35,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class UserController {
   private readonly logger = new Logger(UserController.name);
 
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   // ──────────────────────────────────────────────────────────
   // GET /user/profile
@@ -58,5 +61,26 @@ export class UserController {
     @Body() dto: UpdateUserProfileDto,
   ): Promise<UserProfileDto> {
     return this.userService.updateProfile(userId, dto);
+  }
+  // ──────────────────────────────────────────────────────────
+  // GET /user/tests
+  // Returns all test sessions with scores and skill breakdown
+  // ──────────────────────────────────────────────────────────
+  @Get('tests')
+  @ApiOperation({ summary: 'Get all test results for the current user' })
+  @ApiResponse({ status: 200, type: TestResultsResponseDto })
+  async getTestResults(
+    @CurrentUser('userId') userId: string,
+  ): Promise<TestResultsResponseDto> {
+    return this.userService.getTestResults(userId);
+  }
+  @Get('attempts/:attemptId')
+  @ApiOperation({ summary: 'Get answer detail for a specific skill attempt' })
+  @ApiResponse({ status: 200, type: TestAttemptDetailDto })
+  async getAttemptDetail(
+    @CurrentUser('userId') userId: string,
+    @Param('attemptId') attemptId: string,
+  ): Promise<TestAttemptDetailDto> {
+    return this.userService.getAttemptDetail(userId, attemptId);
   }
 }
