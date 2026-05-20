@@ -1,3 +1,5 @@
+// auth.service.ts
+
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
@@ -7,12 +9,21 @@ import { GoogleUserDto } from './dto/google-user.dto';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { MeResponseDto } from './dto/me-response.dto';
 
+// Centralise cookie config so it can't drift between methods
+export const COOKIE_BASE = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict' as const, // 'none' only if frontend is on a different domain (then add CSRF header check)
+};
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
+
+  // ─── Token helpers ────────────────────────────────────────────────────────
 
   async generateTokens(userId: string, email: string): Promise<AuthTokensDto> {
     const payload = { sub: userId, email };
@@ -31,20 +42,28 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
-    const hashed = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
 
+  async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
-      data: { refreshToken: hashed },
+      data: { refreshToken: this.hashToken(refreshToken) },
     });
   }
+
+  // ─── Auth flows ───────────────────────────────────────────────────────────
 
   async validateGoogleUser(googleUser: GoogleUserDto) {
     const { email, googleId, name, avatarUrl } = googleUser;
 
-    const user = await this.prisma.user.findUnique({ where: { email } })
-      ?? await this.prisma.user.create({ data: { email, googleId, name, avatarUrl } });
+    // upsert so returning users get their profile kept in sync
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: { googleId, name, avatarUrl },   // ← was missing before
+      create: { email, googleId, name, avatarUrl },
+    });
 
     const tokens = await this.generateTokens(user.id, user.email);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
@@ -52,50 +71,62 @@ export class AuthService {
     return { ...tokens, user };
   }
 
-  async getMe(token: string): Promise<MeResponseDto> {
-    if (!token) {
-      throw new UnauthorizedException('No access token');
-    }
-
-    const payload = this.jwtService.verify(token, {
-      secret: process.env.JWT_SECRET,
-    });
-
-    return { userId: payload.sub, email: payload.email };
-  }
-
   async refreshTokens(refreshToken: string, res: Response): Promise<AuthTokensDto> {
-    if (!refreshToken) {
-      throw new UnauthorizedException('No refresh token');
-    }
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
-    const payload = this.jwtService.verify(refreshToken, {
-      secret: process.env.JWT_REFRESH_SECRET,
-    });
+    let payload: { sub: string; email: string };
+    try {
+      payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
 
-    if (!user?.refreshToken) {
-      throw new UnauthorizedException('Access denied');
-    }
+    if (!user?.refreshToken) throw new UnauthorizedException('Access denied');
 
-    const incomingHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    if (incomingHash !== user.refreshToken) {
-      throw new UnauthorizedException('Invalid refresh token');
+    if (this.hashToken(refreshToken) !== user.refreshToken) {
+      // Possible token reuse — invalidate everything (refresh token rotation)
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { refreshToken: null },
+      });
+      throw new UnauthorizedException('Refresh token reuse detected');
     }
 
     const tokens = await this.generateTokens(user.id, user.email);
     await this.saveRefreshToken(user.id, tokens.refreshToken);
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict' as const,
-    };
-
-    res.cookie('accessToken', tokens.accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-    res.cookie('refreshToken', tokens.refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-
+    this.setAuthCookies(res, tokens);
     return tokens;
+  }
+
+  // ─── Logout ───────────────────────────────────────────────────────────────
+
+  async logout(userId: string, res: Response): Promise<void> {
+    // Invalidate the stored refresh token so it can never be reused
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+
+    // Clear both cookies by expiring them immediately
+    res.clearCookie('accessToken', COOKIE_BASE);
+    res.clearCookie('refreshToken', COOKIE_BASE);
+  }
+
+  // ─── Utilities ────────────────────────────────────────────────────────────
+
+  setAuthCookies(res: Response, tokens: AuthTokensDto): void {
+    res.cookie('accessToken', tokens.accessToken, {
+      ...COOKIE_BASE,
+      maxAge: 15 * 60 * 1000, // 15 min
+    });
+    res.cookie('refreshToken', tokens.refreshToken, {
+      ...COOKIE_BASE,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
   }
 }
