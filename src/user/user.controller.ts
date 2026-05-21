@@ -9,6 +9,7 @@ import {
   UseGuards,
   Logger,
   Param,
+  Post,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,6 +28,7 @@ import {
 } from './dto/user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @ApiTags('User')
 @Controller('user')
@@ -74,13 +76,30 @@ export class UserController {
   ): Promise<TestResultsResponseDto> {
     return this.userService.getTestResults(userId);
   }
+
+
+  @SkipThrottle()
+  @UseGuards(JwtAuthGuard)
   @Get('attempts/:attemptId')
-  @ApiOperation({ summary: 'Get answer detail for a specific skill attempt' })
-  @ApiResponse({ status: 200, type: TestAttemptDetailDto })
-  async getAttemptDetail(
-    @CurrentUser('userId') userId: string,
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get attempt detail with answers' })
+  getAttemptDetail(
     @Param('attemptId') attemptId: string,
-  ): Promise<TestAttemptDetailDto> {
-    return this.userService.getAttemptDetail(userId, attemptId);
+    @Req() req: Request,
+  ) {
+    return this.userService.getAttemptDetail(req.user!.userId, attemptId);
+  }
+
+  @Throttle({ long: { ttl: 60000, limit: 10 } })
+  @UseGuards(JwtAuthGuard)
+  @Post('attempts/:attemptId/explain')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get AI explanation for wrong answers — costs 1 credit (cached after first call)' })
+  getAttemptExplanation(
+    @Param('attemptId') attemptId: string,
+    @Req() req: Request,
+  ) {
+    return this.userService.getAttemptExplanation(req.user!.userId, attemptId);
   }
 }

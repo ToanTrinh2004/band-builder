@@ -140,7 +140,7 @@ model TestSkillAttempt {
   skillTest         SkillTest          @relation(fields: [skillTestId], references: [id])
   answers           TestAnswer[]
   writingEvaluation WritingEvaluation?
-
+  explanation ListeningReadingExplanation?
   @@unique([testId, skillTestId])
   @@map("test_skill_attempts")
 }
@@ -347,4 +347,17 @@ enum CreditTxStatus {
   COMPLETED  // SePay webhook confirmed
   FAILED     // expired or amount mismatch
   REFUNDED
+}
+model ListeningReadingExplanation {
+  id        String   @id @default(uuid())
+  attemptId String   @unique
+  createdAt DateTime @default(now())
+
+  explanations   Json
+  creditsCharged Int     @default(1)
+  transactionId  String? // audit only — plain reference, no relation
+
+  attempt TestSkillAttempt @relation(fields: [attemptId], references: [id])
+
+  @@map("listening_reading_explanations")
 }

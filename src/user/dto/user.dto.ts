@@ -157,3 +157,10 @@ export class TestAttemptDetailDto {
   @ApiProperty({ type: [TestAnswerDetailDto] })
   answers: TestAnswerDetailDto[];
 }
+export interface ExplanationItem {
+  questionId:    string;
+  userAnswer:    string | null;
+  correctAnswer: string;
+  explanation:   string;
+  tip:           string;
+}

@@ -2,6 +2,9 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  InternalServerErrorException,
+  BadRequestException,
+  HttpException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TestStatus } from '@prisma/client';
@@ -15,7 +18,8 @@ import {
   TestResultsResponseDto,
   TestAttemptDetailDto,
 } from './dto/user.dto';
-
+import { ExplanationItem } from './dto/user.dto';
+import Anthropic from '@anthropic-ai/sdk';
 // How many recent activity rows to return
 const RECENT_ACTIVITY_LIMIT = 10;
 
@@ -118,43 +122,154 @@ async getTestResults(userId: string): Promise<TestResultsResponseDto> {
 // GET /user/attempts/:attemptId  →  TestAttemptDetailDto
 // Returns every answer the user submitted for a skill attempt
 // ──────────────────────────────────────────────────────────
-async getAttemptDetail(
-  userId: string,
-  attemptId: string,
-): Promise<TestAttemptDetailDto> {
+async getAttemptDetail(userId: string, attemptId: string) {
   const attempt = await this.prisma.testSkillAttempt.findUnique({
     where: { id: attemptId },
     include: {
-      test: true,                          // to verify ownership
+      test: true,
       skillTest: { include: { skillType: true } },
-      answers: { orderBy: { createdAt: 'asc' } },
+      answers:   { orderBy: { createdAt: 'asc' } },
+      explanation: true,   // <-- pull cached explanation flag
     },
   });
 
-  if (!attempt) throw new NotFoundException('Attempt not found');
-
-  // Guard: the attempt must belong to the requesting user
-  if (attempt.test.userId !== userId)
+  if (!attempt || attempt.test.userId !== userId)
     throw new NotFoundException('Attempt not found');
 
+  const skillName = attempt.skillTest.skillType.name.toLowerCase();
+  const isAutoScored = ['listening', 'reading'].includes(skillName);
+
   return {
-    attemptId: attempt.id,
-    skill: attempt.skillTest.skillType.name,
-    bandScore: attempt.bandScore ?? null,
-    score: attempt.score ?? null,
-    maxScore: attempt.maxScore ?? null,
+    attemptId:    attempt.id,
+    skill:        attempt.skillTest.skillType.name,
+    bandScore:    attempt.bandScore  ?? null,
+    score:        attempt.score      ?? null,
+    maxScore:     attempt.maxScore   ?? null,
     timeSpentSec: attempt.timeSpentSec ?? null,
-    submittedAt: attempt.submittedAt?.toISOString() ?? null,
+    submittedAt:  attempt.submittedAt?.toISOString() ?? null,
+    hasExplanation: !!attempt.explanation,   // lets frontend show/hide the "Explain" button
     answers: attempt.answers.map((a) => ({
-      answerId: a.id,
-      questionId: a.questionId,
-      userAnswer: a.userAnswer ?? null,
+      answerId:      a.id,
+      questionId:    a.questionId,
+      userAnswer:    a.userAnswer    ?? null,
       correctAnswer: a.correctAnswer ?? null,
-      isCorrect: a.isCorrect ?? null,
-      timeSpentSec: a.timeSpentSec ?? null,
+      isCorrect:     a.isCorrect     ?? null,
+      timeSpentSec:  a.timeSpentSec  ?? null,
     })),
   };
 }
+
+
+async getAttemptExplanation(userId: string, attemptId: string) {
+  // 1. load attempt + ownership check
+  const attempt = await this.prisma.testSkillAttempt.findUnique({
+    where: { id: attemptId },
+    include: {
+      test:        true,
+      skillTest:   { include: { skillType: true, skillContent: true } },
+      answers:     { orderBy: { createdAt: 'asc' } },
+      explanation: true,
+    },
+  });
+
+  if (!attempt || attempt.test.userId !== userId)
+    throw new NotFoundException('Attempt not found');
+
+  // 2. guard: only listening / reading
+  const skillName = attempt.skillTest.skillType.name.toLowerCase();
+  if (!['listening', 'reading'].includes(skillName))
+    throw new BadRequestException(
+      'AI explanations are only available for Listening and Reading attempts',
+    );
+
+  // 3. guard: attempt must be submitted
+  if (!attempt.submittedAt)
+    throw new BadRequestException('Submit the attempt before requesting an explanation');
+
+  // 4. cache hit — return immediately, no charge
+  if (attempt.explanation) {
+    return {
+      attemptId,
+      skill:        attempt.skillTest.skillType.name,
+      charged:      false,
+      explanations: attempt.explanation.explanations,
+    };
+  }
+
+  // 5. credit check
+  const userCredit = await this.prisma.userCredit.findUnique({ where: { userId } });
+  if (!userCredit || userCredit.balance < 1)
+    throw new BadRequestException(
+      'Insufficient credits. Please purchase more credits to get AI explanations.',
+    );
+
+  // 6. call Claude
+  const wrongAnswers = attempt.answers.filter((a) => a.isCorrect === false);
+  if (wrongAnswers.length === 0) {
+    // perfect score — no wrong answers to explain; grant free
+    return {
+      attemptId,
+      skill:        attempt.skillTest.skillType.name,
+      charged:      false,
+      explanations: [],
+      message:      'Perfect score — no incorrect answers to explain!',
+    };
+  }
+
+  let explanations: ExplanationItem[];
+  try {
+    explanations = await this.explainWithClaude(skillName, wrongAnswers);
+  } catch {
+    throw new InternalServerErrorException('Claude explanation failed — please try again');
+  }
+
+  // 7. deduct credit + persist — all in one transaction
+  try {
+    await this.prisma.$transaction(async (tx) => {
+      const credit = await tx.userCredit.findUnique({ where: { userId } });
+      if (!credit || credit.balance < 1)
+        throw new BadRequestException('Insufficient credits');
+
+      const transaction = await tx.creditTransaction.create({
+        data: {
+          userId,
+          type:          'SPEND',
+          amount:        -1,
+          balanceBefore: credit.balance,
+          balanceAfter:  credit.balance - 1,
+          description:   `AI explanation: ${skillName} attempt ${attemptId}`,
+          referenceId:   attemptId,
+          status:        'COMPLETED',
+        },
+      });
+
+      await tx.userCredit.update({
+        where: { userId },
+        data:  { balance: { decrement: 1 } },
+      });
+
+      await tx.listeningReadingExplanation.create({
+        data: {
+          attemptId,
+          explanations:   explanations as any,
+          creditsCharged: 1,
+          transactionId:  transaction.id,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof HttpException) throw error;
+    throw new InternalServerErrorException('Failed to process credit deduction');
+  }
+
+  return {
+    attemptId,
+    skill:        attempt.skillTest.skillType.name,
+    charged:      true,
+    explanations,
+  };
+}
+
 
   // ──────────────────────────────────────────────────────────
   // PRIVATE HELPERS
@@ -328,5 +443,49 @@ async getAttemptDetail(
     return Math.round(
       Math.abs(new Date(b).getTime() - new Date(a).getTime()) / msPerDay,
     );
+  }
+
+  private async explainWithClaude(
+    skillName: string,
+    wrongAnswers: Array<{
+      questionId:    string;
+      userAnswer:    string | null;
+      correctAnswer: string | null;
+    }>,
+  ): Promise<ExplanationItem[]> {
+    const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+  
+    const prompt = `You are an IELTS ${skillName} expert. 
+  For each incorrect answer below, give a concise explanation (2-3 sentences) of:
+  1. Why the correct answer is right
+  2. Why the student's answer is wrong (if possible to infer)
+  3. A tip to avoid this mistake
+  
+  Return ONLY a JSON array with this shape — no markdown, no preamble:
+  [
+    {
+      "questionId": "string",
+      "userAnswer": "string | null",
+      "correctAnswer": "string",
+      "explanation": "string",
+      "tip": "string"
+    }
+  ]
+  
+  Incorrect answers:
+  ${JSON.stringify(wrongAnswers, null, 2)}`;
+  
+    const response = await anthropic.messages.create({
+      model:      'claude-sonnet-4-6',
+      max_tokens: 2048,
+      messages:   [{ role: 'user', content: prompt }],
+    });
+  
+    const raw = response.content
+      .filter((b) => b.type === 'text')
+      .map((b: any) => b.text)
+      .join('');
+  
+    return JSON.parse(raw.replace(/```json|```/g, '').trim()) as ExplanationItem[];
   }
 }
