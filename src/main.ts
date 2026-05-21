@@ -10,10 +10,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: [
-      "http://localhost:5173",
-      "https://bandbuilder.site",
-    ],
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   });
 
