@@ -13,7 +13,7 @@ import { MeResponseDto } from './dto/me-response.dto';
 export const COOKIE_BASE = {
   httpOnly: true,
   secure: true,
-  sameSite: 'strict' as const, // 'none' only if frontend is on a different domain (then add CSRF header check)
+  sameSite: 'none' as const, // 'none' only if frontend is on a different domain (then add CSRF header check)
 };
 
 @Injectable()
