@@ -10,7 +10,8 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: "*"
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
   });
 
   // Swagger setup
