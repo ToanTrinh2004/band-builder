@@ -361,3 +361,31 @@ model ListeningReadingExplanation {
 
   @@map("listening_reading_explanations")
 }
+
+// ============================================================
+// DICTIONARY CACHE
+// ============================================================
+
+model DictionaryCache {
+  id        String   @id @default(uuid())
+  word      String   @unique
+  phonetic  String?
+  audioUrl  String?
+  meaning   String?  @db.Text
+  synonyms  String?  @db.Text
+  explainVN String?  @db.Text
+  example   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("dictionary_caches")
+}
+
+model SentenceTranslationCache {
+  id          String   @id @default(uuid())
+  sentence    String   @unique @db.Text
+  translation String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@map("sentence_translation_caches")
+}

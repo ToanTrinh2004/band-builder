@@ -12,6 +12,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CustomThrottlerGuard } from './auth/guards/customThrottler.guard';
 import { PaymentModule } from './payment/payment.module';
 import { UserModule } from './user/user.module';
+import { DictionaryModule } from './dictionary/dictionary.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { UserModule } from './user/user.module';
     CloudinaryModule,
     PaymentModule,
     UserModule,
+    DictionaryModule,
   ],
   controllers: [AppController],
   providers: [
