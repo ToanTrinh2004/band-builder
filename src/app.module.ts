@@ -13,6 +13,7 @@ import { CustomThrottlerGuard } from './auth/guards/customThrottler.guard';
 import { PaymentModule } from './payment/payment.module';
 import { UserModule } from './user/user.module';
 import { DictionaryModule } from './dictionary/dictionary.module';
+import { PracticeGeneralModule } from './practice-general/practice-general.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DictionaryModule } from './dictionary/dictionary.module';
     PaymentModule,
     UserModule,
     DictionaryModule,
+    PracticeGeneralModule,
   ],
   controllers: [AppController],
   providers: [
