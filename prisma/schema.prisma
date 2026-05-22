@@ -389,3 +389,89 @@ model SentenceTranslationCache {
 
   @@map("sentence_translation_caches")
 }
+
+// ============================================================
+// PRONUNCIATION PRACTICE
+// ============================================================
+
+model PronunciationTopic {
+  id          String   @id @default(uuid())
+  title       String
+  paragraph   String   @db.Text        
+  videoUrl    String?                 
+  audioUrl    String?                 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vocabs      PronunciationVocab[]    
+  sentences   PronunciationSentence[]
+
+  @@map("pronunciation_topics")
+}
+
+model PronunciationVocab {
+  id                 String   @id @default(uuid())
+  topicId            String
+  word               String            
+  ipa                String            
+  meaning            String   @db.Text 
+  audioUrl           String?  //file audio of this word
+  example            String   @db.Text 
+  exampleTranslation String   @db.Text 
+
+  topic              PronunciationTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@map("pronunciation_vocabs")
+}
+
+model PronunciationSentence {
+  id         String             @id @default(uuid())
+  topicId    String
+  text       String             @db.Text
+  startTime  Float              // Precise timestamp in seconds
+  endTime    Float              // Precise timestamp in seconds
+  orderIndex Int                // Position/sequence in paragraph
+
+  topic      PronunciationTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@map("pronunciation_sentences")
+}
+
+
+// ============================================================
+// WRITING SAMPLES
+// ============================================================
+
+enum WritingTaskType {
+  TASK_1
+  TASK_2
+}
+
+model WritingSampleTopic {
+  id        String          @id @default(uuid())
+  taskType  WritingTaskType // TASK_1 or TASK_2
+  category  String          // topic
+  prompt    String          @db.Text // paper
+  imageUrl  String?         
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  essays    WritingSampleEssay[]
+
+  @@map("writing_sample_topics")
+}
+
+model WritingSampleEssay {
+  id               String             @id @default(uuid())
+  topicId          String
+  bandScore        Float          
+  essayText        String             @db.Text 
+  essayTranslation String           @db.Text 
+  analysis         Json?              // analysis the key points of the essay, vocabulary, grammar, etc
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  topic            WritingSampleTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@map("writing_sample_essays")
+}
