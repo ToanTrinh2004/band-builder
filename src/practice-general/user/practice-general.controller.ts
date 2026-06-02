@@ -4,9 +4,11 @@ import {
   Post,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { WritingTaskType } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { PracticeGeneralService } from './practice-general.service';
 import {
@@ -18,7 +20,7 @@ import {
 @ApiTags('PracticeGeneral')
 @Controller('practice-general')
 export class PracticeGeneralController {
-  constructor(private readonly practiceGeneralService: PracticeGeneralService) {}
+  constructor(private readonly practiceGeneralService: PracticeGeneralService) { }
 
   // ── Pronunciation ──────────────────────────────────────────────────────────
 

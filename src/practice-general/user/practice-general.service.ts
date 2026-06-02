@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { YoutubeTranscriptService } from './youtube/youtube-transcript.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { YoutubeTranscriptService } from '../youtube/youtube-transcript.service';
 import {
   Prisma,
   PronunciationTopic,
