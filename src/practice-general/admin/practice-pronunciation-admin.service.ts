@@ -28,7 +28,14 @@ export class PracticePronunciationAdminService {
     }
 
     let sentences: ScrapedSentence[] = [];
-    if (dto.videoUrl) {
+    if (dto.sentences && dto.sentences.length > 0) {
+      sentences = dto.sentences.map(s => ({
+        text: s.text,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        orderIndex: s.orderIndex,
+      }));
+    } else if (dto.videoUrl) {
       try {
         sentences = await this.youtubeTranscriptService.fetchTranscriptByUrl(dto.videoUrl);
       } catch (error) {

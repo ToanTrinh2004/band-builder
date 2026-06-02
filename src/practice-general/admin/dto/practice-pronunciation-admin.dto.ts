@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsArray, IsNumber, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
+// ── 1. Vocabulary DTOs ──────────────────────────────────────────────────────
+
 export class CreatePronunciationVocabAdminDto {
   @ApiProperty({ example: 'vocabulary', description: 'Từ vựng cần luyện phát âm' })
   @IsNotEmpty()
@@ -36,6 +38,34 @@ export class CreatePronunciationVocabAdminDto {
 
 export class UpdatePronunciationVocabAdminDto extends PartialType(CreatePronunciationVocabAdminDto) {}
 
+// ── 2. Sentence DTOs ────────────────────────────────────────────────────────
+
+export class CreatePronunciationSentenceAdminDto {
+  @ApiProperty({ example: 'This is a sample sentence.', description: 'Nội dung câu luyện phát âm' })
+  @IsNotEmpty()
+  @IsString()
+  text!: string;
+
+  @ApiProperty({ example: 1.25, description: 'Mốc thời gian bắt đầu (giây) trong video/audio' })
+  @IsNotEmpty()
+  @IsNumber()
+  startTime!: number;
+
+  @ApiProperty({ example: 4.5, description: 'Mốc thời gian kết thúc (giây) trong video/audio' })
+  @IsNotEmpty()
+  @IsNumber()
+  endTime!: number;
+
+  @ApiProperty({ example: 0, description: 'Thứ tự xuất hiện của câu trong đoạn văn' })
+  @IsNotEmpty()
+  @IsNumber()
+  orderIndex!: number;
+}
+
+export class UpdatePronunciationSentenceAdminDto extends PartialType(CreatePronunciationSentenceAdminDto) {}
+
+// ── 3. Topic DTOs ───────────────────────────────────────────────────────────
+
 export class CreatePronunciationTopicAdminDto {
   @ApiProperty({ example: 'English Pronunciation 101', description: 'Tiêu đề chủ đề phát âm' })
   @IsNotEmpty()
@@ -66,30 +96,16 @@ export class CreatePronunciationTopicAdminDto {
   @ValidateNested({ each: true })
   @Type(() => CreatePronunciationVocabAdminDto)
   vocabs?: CreatePronunciationVocabAdminDto[];
+
+  @ApiPropertyOptional({
+    type: [CreatePronunciationSentenceAdminDto],
+    description: 'Danh sách câu tương tác karaoke thủ công',
+  })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreatePronunciationSentenceAdminDto)
+  sentences?: CreatePronunciationSentenceAdminDto[];
 }
 
 export class UpdatePronunciationTopicAdminDto extends PartialType(CreatePronunciationTopicAdminDto) {}
-
-export class CreatePronunciationSentenceAdminDto {
-  @ApiProperty({ example: 'This is a sample sentence.', description: 'Nội dung câu luyện phát âm' })
-  @IsNotEmpty()
-  @IsString()
-  text!: string;
-
-  @ApiProperty({ example: 1.25, description: 'Mốc thời gian bắt đầu (giây) trong video/audio' })
-  @IsNotEmpty()
-  @IsNumber()
-  startTime!: number;
-
-  @ApiProperty({ example: 4.5, description: 'Mốc thời gian kết thúc (giây) trong video/audio' })
-  @IsNotEmpty()
-  @IsNumber()
-  endTime!: number;
-
-  @ApiProperty({ example: 0, description: 'Thứ tự xuất hiện của câu trong đoạn văn' })
-  @IsNotEmpty()
-  @IsNumber()
-  orderIndex!: number;
-}
-
-export class UpdatePronunciationSentenceAdminDto extends PartialType(CreatePronunciationSentenceAdminDto) {}

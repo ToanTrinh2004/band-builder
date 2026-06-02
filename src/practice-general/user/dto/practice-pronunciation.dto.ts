@@ -89,7 +89,10 @@ export class PronunciationSentenceResponseDto {
 export class PronunciationTopicListItemResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() title!: string;
+  @ApiProperty() paragraph!: string;
+  @ApiProperty({ type: String, nullable: true }) videoUrl!: string | null;
   @ApiProperty() vocabCount!: number;
+  @ApiProperty() sentencesCount!: number;
 }
 
 export class PronunciationTopicDetailResponseDto {

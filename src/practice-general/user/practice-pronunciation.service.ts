@@ -16,12 +16,12 @@ export class PracticePronunciationService {
    * Fetches all pronunciation topics along with count of core vocabularies.
    */
   async getPronunciationTopics(): Promise<
-    { id: string; title: string; vocabCount: number }[]
+    { id: string; title: string; paragraph: string; videoUrl: string | null; vocabCount: number; sentencesCount: number }[]
   > {
     const topics = await this.prisma.pronunciationTopic.findMany({
       include: {
         _count: {
-          select: { vocabs: true },
+          select: { vocabs: true, sentences: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -30,7 +30,10 @@ export class PracticePronunciationService {
     return topics.map((t) => ({
       id: t.id,
       title: t.title,
+      paragraph: t.paragraph,
+      videoUrl: t.videoUrl,
       vocabCount: t._count.vocabs,
+      sentencesCount: t._count.sentences,
     }));
   }
 
