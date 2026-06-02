@@ -1,26 +1,15 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
-import { WritingTaskType } from '@prisma/client';
+import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { PracticeGeneralService } from './practice-general.service';
+import { PracticePronunciationService } from './practice-pronunciation.service';
 import {
-  CreatePronunciationTopicDto,
   PronunciationTopicListItemResponseDto,
   PronunciationTopicDetailResponseDto,
-} from './dto/practice-general.dto';
+} from './dto/practice-pronunciation.dto';
 
-@ApiTags('PracticeGeneral')
+@ApiTags('PracticePronunciation')
 @Controller('practice-general')
-export class PracticeGeneralController {
-  constructor(private readonly practiceGeneralService: PracticeGeneralService) { }
+export class PracticePronunciationController {
+  constructor(private readonly practicePronunciationService: PracticePronunciationService) {}
 
   // ── Pronunciation ──────────────────────────────────────────────────────────
 
@@ -28,7 +17,7 @@ export class PracticeGeneralController {
   @ApiOperation({ summary: 'Get all pronunciation topics' })
   @ApiResponse({ status: 200, type: [PronunciationTopicListItemResponseDto], description: 'List of pronunciation topics' })
   async getPronunciationTopics(): Promise<PronunciationTopicListItemResponseDto[]> {
-    return this.practiceGeneralService.getPronunciationTopics();
+    return this.practicePronunciationService.getPronunciationTopics();
   }
 
   @Get('pronunciation/topics/:id')
@@ -38,16 +27,6 @@ export class PracticeGeneralController {
   async getPronunciationTopicDetail(
     @Param('id') id: string,
   ): Promise<PronunciationTopicDetailResponseDto> {
-    return this.practiceGeneralService.getPronunciationTopicDetail(id);
-  }
-
-  @Post('pronunciation/topics')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new pronunciation topic (admin/seed)' })
-  @ApiResponse({ status: 201, type: PronunciationTopicDetailResponseDto, description: 'Created topic details' })
-  async createPronunciationTopic(
-    @Body() body: CreatePronunciationTopicDto,
-  ): Promise<PronunciationTopicDetailResponseDto> {
-    return this.practiceGeneralService.createPronunciationTopic(body);
+    return this.practicePronunciationService.getPronunciationTopicDetail(id);
   }
 }

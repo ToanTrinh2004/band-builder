@@ -2,8 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// ─── Input DTOs ──────────────────────────────────────────────────────────────
-
 export class CreatePronunciationVocabDto {
   @ApiProperty({ example: 'vocabulary', description: 'Vocabulary word' })
   @IsNotEmpty()
@@ -67,8 +65,6 @@ export class CreatePronunciationTopicDto {
   @Type(() => CreatePronunciationVocabDto)
   vocabs?: CreatePronunciationVocabDto[];
 }
-
-// ─── Response DTOs ───────────────────────────────────────────────────────────
 
 export class PronunciationVocabResponseDto {
   @ApiProperty() id!: string;
