@@ -11,7 +11,7 @@ import {
 @ApiTags('WritingSamples')
 @Controller('practice-general/writing-samples')
 export class WritingSampleController {
-  constructor(private readonly writingSampleService: WritingSampleService) {}
+  constructor(private readonly writingSampleService: WritingSampleService) { }
 
   @Get('topics')
   @ApiOperation({ summary: 'Get all writing sample topics' })

@@ -154,6 +154,9 @@ export class TestAttemptDetailDto {
   @ApiProperty({ example: '2024-01-01T01:00:00.000Z', nullable: true })
   submittedAt: string | null;
 
+  @ApiPropertyOptional()
+  writingEvaluation?: any;
+
   @ApiProperty({ type: [TestAnswerDetailDto] })
   answers: TestAnswerDetailDto[];
 }

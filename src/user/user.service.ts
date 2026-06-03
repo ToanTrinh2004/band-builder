@@ -130,6 +130,7 @@ async getAttemptDetail(userId: string, attemptId: string) {
       skillTest: { include: { skillType: true } },
       answers:   { orderBy: { createdAt: 'asc' } },
       explanation: true,   // <-- pull cached explanation flag
+      writingEvaluation: true,
     },
   });
 
@@ -148,6 +149,7 @@ async getAttemptDetail(userId: string, attemptId: string) {
     timeSpentSec: attempt.timeSpentSec ?? null,
     submittedAt:  attempt.submittedAt?.toISOString() ?? null,
     hasExplanation: !!attempt.explanation,   // lets frontend show/hide the "Explain" button
+    writingEvaluation: attempt.writingEvaluation ?? null,
     answers: attempt.answers.map((a) => ({
       answerId:      a.id,
       questionId:    a.questionId,
