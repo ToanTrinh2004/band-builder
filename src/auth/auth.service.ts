@@ -58,12 +58,49 @@ export class AuthService {
   async validateGoogleUser(googleUser: GoogleUserDto) {
     const { email, googleId, name, avatarUrl } = googleUser;
 
-    // upsert so returning users get their profile kept in sync
-    const user = await this.prisma.user.upsert({
+    let user = await this.prisma.user.findUnique({
       where: { email },
-      update: { googleId, name, avatarUrl },   // ← was missing before
-      create: { email, googleId, name, avatarUrl },
     });
+
+    if (!user) {
+      user = await this.prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            email,
+            googleId,
+            name,
+            avatarUrl,
+            role: 'STUDENT',
+          },
+        });
+
+        await tx.userCredit.create({
+          data: {
+            userId: newUser.id,
+            balance: 10,
+          },
+        });
+
+        await tx.creditTransaction.create({
+          data: {
+            userId: newUser.id,
+            type: 'BONUS',
+            amount: 10,
+            balanceBefore: 0,
+            balanceAfter: 10,
+            description: 'Chào mừng thành viên mới (Tặng 10 Credits)',
+            status: 'COMPLETED',
+          },
+        });
+
+        return newUser;
+      });
+    } else {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { googleId, name, avatarUrl },
+      });
+    }
 
     const tokens = await this.generateTokens(user.id, user.email);
     await this.saveRefreshToken(user.id, tokens.refreshToken);

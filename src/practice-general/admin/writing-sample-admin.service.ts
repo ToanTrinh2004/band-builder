@@ -9,7 +9,7 @@ import {
 
 @Injectable()
 export class WritingSampleAdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ── Topics CRUD ────────────────────────────────────────────────────────────
 
@@ -24,6 +24,7 @@ export class WritingSampleAdminService {
         category: dto.category,
         prompt: dto.prompt,
         imageUrl: dto.imageUrl ?? null,
+        chartDescription: dto.chartDescription ?? null,
       },
     });
   }
@@ -33,10 +34,7 @@ export class WritingSampleAdminService {
       throw new BadRequestException('Request body is missing or empty');
     }
 
-    // Check if topic exists
-    const existing = await this.prisma.writingSampleTopic.findUnique({
-      where: { id },
-    });
+    const existing = await this.prisma.writingSampleTopic.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Writing sample topic with ID ${id} not found`);
     }
@@ -48,21 +46,18 @@ export class WritingSampleAdminService {
         category: dto.category,
         prompt: dto.prompt,
         imageUrl: dto.imageUrl !== undefined ? dto.imageUrl : undefined,
+        chartDescription: dto.chartDescription !== undefined ? dto.chartDescription : undefined,
       },
     });
   }
 
   async deleteTopic(id: string) {
-    const existing = await this.prisma.writingSampleTopic.findUnique({
-      where: { id },
-    });
+    const existing = await this.prisma.writingSampleTopic.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Writing sample topic with ID ${id} not found`);
     }
 
-    await this.prisma.writingSampleTopic.delete({
-      where: { id },
-    });
+    await this.prisma.writingSampleTopic.delete({ where: { id } });
 
     return { success: true, message: `Writing sample topic with ID ${id} deleted successfully` };
   }
@@ -74,10 +69,7 @@ export class WritingSampleAdminService {
       throw new BadRequestException('Request body is missing or empty');
     }
 
-    // Check if topic exists
-    const topic = await this.prisma.writingSampleTopic.findUnique({
-      where: { id: topicId },
-    });
+    const topic = await this.prisma.writingSampleTopic.findUnique({ where: { id: topicId } });
     if (!topic) {
       throw new NotFoundException(`Writing sample topic with ID ${topicId} not found`);
     }
@@ -87,8 +79,8 @@ export class WritingSampleAdminService {
         topicId,
         bandScore: dto.bandScore,
         essayText: dto.essayText,
-        essayTranslation: dto.essayTranslation,
-        analysis: dto.analysis ?? null,
+        essayTranslation: dto.essayTranslation ?? '',
+        analysis: dto.analysis ? (dto.analysis as any) : null,
       },
     });
   }
@@ -98,9 +90,7 @@ export class WritingSampleAdminService {
       throw new BadRequestException('Request body is missing or empty');
     }
 
-    const existing = await this.prisma.writingSampleEssay.findUnique({
-      where: { id },
-    });
+    const existing = await this.prisma.writingSampleEssay.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Writing sample essay with ID ${id} not found`);
     }
@@ -111,22 +101,18 @@ export class WritingSampleAdminService {
         bandScore: dto.bandScore,
         essayText: dto.essayText,
         essayTranslation: dto.essayTranslation,
-        analysis: dto.analysis !== undefined ? dto.analysis : undefined,
+        analysis: dto.analysis !== undefined ? (dto.analysis as any) : undefined,
       },
     });
   }
 
   async deleteEssay(id: string) {
-    const existing = await this.prisma.writingSampleEssay.findUnique({
-      where: { id },
-    });
+    const existing = await this.prisma.writingSampleEssay.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Writing sample essay with ID ${id} not found`);
     }
 
-    await this.prisma.writingSampleEssay.delete({
-      where: { id },
-    });
+    await this.prisma.writingSampleEssay.delete({ where: { id } });
 
     return { success: true, message: `Writing sample essay with ID ${id} deleted successfully` };
   }

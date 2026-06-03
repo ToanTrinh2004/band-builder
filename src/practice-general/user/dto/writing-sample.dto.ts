@@ -15,36 +15,62 @@ export class GetWritingSamplesQueryDto {
   taskType?: WritingTaskTypeQuery;
 }
 
-// ─── Response ─────────────────────────────────────────────────────────────────
+export class EssayKeyVocabularyItemResponseDto {
+  @ApiProperty() phrase!: string;
+  @ApiProperty() meaning!: string;
+  @ApiPropertyOptional() context?: string;
+}
+
+export class EssayAnalysisResponseDto {
+  @ApiPropertyOptional() taskAchievement?: number;
+  @ApiPropertyOptional() coherenceCohesion?: number;
+  @ApiPropertyOptional() lexicalResource?: number;
+  @ApiPropertyOptional() grammaticalRange?: number;
+  @ApiPropertyOptional() outline?: string;
+  @ApiPropertyOptional({ type: [String] }) strengths?: string[];
+  @ApiPropertyOptional({ type: [String] }) improvements?: string[];
+  @ApiPropertyOptional({ type: [EssayKeyVocabularyItemResponseDto] })
+  keyVocabulary?: EssayKeyVocabularyItemResponseDto[];
+  @ApiPropertyOptional() overallComment?: string;
+}
+
+// ─── Essay Response ───────────────────────────────────────────────────────────
 
 export class WritingSampleEssayResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() topicId!: string;
   @ApiProperty() bandScore!: number;
   @ApiProperty() essayText!: string;
-  @ApiProperty() essayTranslation!: string;
-  @ApiProperty({ type: Object, nullable: true }) analysis!: any;
+  @ApiPropertyOptional() essayTranslation?: string;
+  @ApiPropertyOptional({ nullable: true })
+  analysis?: any;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
+
+// ─── Topic List Response ──────────────────────────────────────────────────────
 
 export class WritingSampleTopicListItemResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: ['TASK_1', 'TASK_2'] }) taskType!: 'TASK_1' | 'TASK_2';
   @ApiProperty() category!: string;
   @ApiProperty() prompt!: string;
-  @ApiProperty({ type: String, nullable: true }) imageUrl!: string | null;
+  @ApiPropertyOptional({ nullable: true }) imageUrl?: string | null;
+  @ApiPropertyOptional({ nullable: true }) chartDescription?: string | null;
   @ApiProperty() essayCount!: number;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }
+
+// ─── Topic Detail Response ────────────────────────────────────────────────────
 
 export class WritingSampleTopicDetailResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: ['TASK_1', 'TASK_2'] }) taskType!: 'TASK_1' | 'TASK_2';
   @ApiProperty() category!: string;
   @ApiProperty() prompt!: string;
-  @ApiProperty({ type: String, nullable: true }) imageUrl!: string | null;
+  @ApiPropertyOptional({ nullable: true }) imageUrl?: string | null;
+  @ApiPropertyOptional({ nullable: true }) chartDescription?: string | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
   @ApiProperty({ type: [WritingSampleEssayResponseDto] }) essays!: WritingSampleEssayResponseDto[];

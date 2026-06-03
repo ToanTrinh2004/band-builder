@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -139,11 +141,11 @@ async function main() {
                   instruction: 'Complete the form. Write NO MORE THAN THREE WORDS for each answer.',
                   form_title: 'PERSONAL DETAILS FORM',
                   questions: [
-                    { id: 'L1Q6',  number: 6,  text: 'Name: Mary ___',                          answer: 'Prescott' },
-                    { id: 'L1Q7',  number: 7,  text: 'Address: Flat 2, ___ [number]',            answer: '41' },
-                    { id: 'L1Q8',  number: 8,  text: 'Address: ___ Road, Canterbury',            answer: 'Fountain' },
-                    { id: 'L1Q9',  number: 9,  text: 'Telephone: ___',                           answer: '752239' },
-                    { id: 'L1Q10', number: 10, text: 'Estimated value of lost item: £___',       answer: '65' },
+                    { id: 'L1Q6', number: 6, text: 'Name: Mary ___', answer: 'Prescott' },
+                    { id: 'L1Q7', number: 7, text: 'Address: Flat 2, ___ [number]', answer: '41' },
+                    { id: 'L1Q8', number: 8, text: 'Address: ___ Road, Canterbury', answer: 'Fountain' },
+                    { id: 'L1Q9', number: 9, text: 'Telephone: ___', answer: '752239' },
+                    { id: 'L1Q10', number: 10, text: 'Estimated value of lost item: £___', answer: '65' },
                   ],
                 },
               ],
@@ -166,14 +168,14 @@ async function main() {
                   questions_range: '14-21',
                   instruction: 'Complete the notes below. Write NO MORE THAN THREE WORDS.',
                   questions: [
-                    { id: 'L2Q14', number: 14, text: 'The Government plans to give $___ to assist the farmers.',        answer: '250 million' },
+                    { id: 'L2Q14', number: 14, text: 'The Government plans to give $___ to assist the farmers.', answer: '250 million' },
                     { id: 'L2Q15', number: 15, text: "Money was to be spent on improving Sydney's ___ but re-allocated.", answer: 'roads / road system' },
-                    { id: 'L2Q16', number: 16, text: 'Farmers say the money will not help because it is ___.',           answer: 'too late' },
-                    { id: 'L2Q17', number: 17, text: 'An aeroplane carrying a group of ___ was forced to land.',         answer: 'school children / boys' },
-                    { id: 'L2Q18', number: 18, text: 'Forced to land just ___ minutes after take-off.',                  answer: '3' },
-                    { id: 'L2Q19', number: 19, text: 'The passengers were rescued by ___.',                               answer: 'boats / pleasure craft' },
-                    { id: 'L2Q20', number: 20, text: 'The passengers thanked the ___ for saving their lives.',            answer: 'pilot' },
-                    { id: 'L2Q21', number: 21, text: 'Unfortunately they lost their ___.',                                answer: 'musical instruments' },
+                    { id: 'L2Q16', number: 16, text: 'Farmers say the money will not help because it is ___.', answer: 'too late' },
+                    { id: 'L2Q17', number: 17, text: 'An aeroplane carrying a group of ___ was forced to land.', answer: 'school children / boys' },
+                    { id: 'L2Q18', number: 18, text: 'Forced to land just ___ minutes after take-off.', answer: '3' },
+                    { id: 'L2Q19', number: 19, text: 'The passengers were rescued by ___.', answer: 'boats / pleasure craft' },
+                    { id: 'L2Q20', number: 20, text: 'The passengers thanked the ___ for saving their lives.', answer: 'pilot' },
+                    { id: 'L2Q21', number: 21, text: 'Unfortunately they lost their ___.', answer: 'musical instruments' },
                   ],
                 },
               ],
@@ -189,10 +191,10 @@ async function main() {
                   questions_range: '22-25',
                   instruction: 'Circle the appropriate letter.',
                   questions: [
-                    { id: 'L3Q22', number: 22, text: 'The orientation meeting',    options: ['A: took place recently', 'B: took place last term', 'C: will take place tomorrow', 'D: will take place next week'], answer: 'A' },
-                    { id: 'L3Q23', number: 23, text: 'Attendance at lectures is',  options: ['A: optional after 4 pm', 'B: closely monitored', 'C: difficult to enforce', 'D: sometimes unnecessary'], answer: 'B' },
-                    { id: 'L3Q24', number: 24, text: 'Tutorials take place',        options: ['A: every morning', 'B: twice a week', 'C: three mornings a week', 'D: three afternoons a week'], answer: 'C' },
-                    { id: 'L3Q25', number: 25, text: "The lecturer's name is",      options: ['A: Roberts', 'B: Rawson', 'C: Rogers', 'D: Robertson'], answer: 'A' },
+                    { id: 'L3Q22', number: 22, text: 'The orientation meeting', options: ['A: took place recently', 'B: took place last term', 'C: will take place tomorrow', 'D: will take place next week'], answer: 'A' },
+                    { id: 'L3Q23', number: 23, text: 'Attendance at lectures is', options: ['A: optional after 4 pm', 'B: closely monitored', 'C: difficult to enforce', 'D: sometimes unnecessary'], answer: 'B' },
+                    { id: 'L3Q24', number: 24, text: 'Tutorials take place', options: ['A: every morning', 'B: twice a week', 'C: three mornings a week', 'D: three afternoons a week'], answer: 'C' },
+                    { id: 'L3Q25', number: 25, text: "The lecturer's name is", options: ['A: Roberts', 'B: Rawson', 'C: Rogers', 'D: Robertson'], answer: 'A' },
                   ],
                 },
                 {
@@ -200,12 +202,12 @@ async function main() {
                   questions_range: '26-31',
                   instruction: 'Complete the notes below using NO MORE THAN THREE WORDS.',
                   questions: [
-                    { id: 'L3Q26', number: 26, text: 'Tutorial paper: Students must ___ for 25 minutes.',  answer: 'talk / give a talk' },
-                    { id: 'L3Q27', number: 27, text: 'Students must also ___.',                             answer: 'write up work' },
-                    { id: 'L3Q28', number: 28, text: 'Essay topic: Usually ___.',                           answer: 'can choose' },
-                    { id: 'L3Q29', number: 29, text: 'Type of exam: ___.',                                  answer: 'open book' },
-                    { id: 'L3Q30', number: 30, text: 'Library: Important books are in ___.',                answer: 'closed reserve' },
-                    { id: 'L3Q31', number: 31, text: 'Focus of course: Focus on ___.',                      answer: 'vocational subjects / preparing for work' },
+                    { id: 'L3Q26', number: 26, text: 'Tutorial paper: Students must ___ for 25 minutes.', answer: 'talk / give a talk' },
+                    { id: 'L3Q27', number: 27, text: 'Students must also ___.', answer: 'write up work' },
+                    { id: 'L3Q28', number: 28, text: 'Essay topic: Usually ___.', answer: 'can choose' },
+                    { id: 'L3Q29', number: 29, text: 'Type of exam: ___.', answer: 'open book' },
+                    { id: 'L3Q30', number: 30, text: 'Library: Important books are in ___.', answer: 'closed reserve' },
+                    { id: 'L3Q31', number: 31, text: 'Focus of course: Focus on ___.', answer: 'vocational subjects / preparing for work' },
                   ],
                 },
               ],
@@ -222,7 +224,7 @@ async function main() {
                   instruction: 'Circle the appropriate letter.',
                   questions: [
                     { id: 'L4Q32', number: 32, text: 'The speaker works within the Faculty of', options: ['A: Science and Technology', 'B: Arts and Social Sciences', 'C: Architecture', 'D: Law'], answer: 'B' },
-                    { id: 'L4Q33', number: 33, text: 'The Faculty consists firstly of',          options: ['A: subjects', 'B: degrees', 'C: divisions', 'D: departments'], answer: 'C' },
+                    { id: 'L4Q33', number: 33, text: 'The Faculty consists firstly of', options: ['A: subjects', 'B: degrees', 'C: divisions', 'D: departments'], answer: 'C' },
                   ],
                 },
                 {
@@ -231,8 +233,8 @@ async function main() {
                   instruction: 'Complete the notes in NO MORE THAN THREE WORDS.',
                   questions: [
                     { id: 'L4Q34', number: 34, text: 'Subjects in first semester: psychology, sociology, ___ and ___.', answer: 'history and economics' },
-                    { id: 'L4Q35', number: 35, text: 'Students may have problems with ___.',                            answer: 'meeting deadlines (for essays)' },
-                    { id: 'L4Q36', number: 36, text: 'Students may also have problems with ___.',                       answer: 'attendance' },
+                    { id: 'L4Q35', number: 35, text: 'Students may have problems with ___.', answer: 'meeting deadlines (for essays)' },
+                    { id: 'L4Q36', number: 36, text: 'Students may also have problems with ___.', answer: 'attendance' },
                   ],
                 },
                 {
@@ -240,11 +242,11 @@ async function main() {
                   questions_range: '37-41',
                   instruction: 'Circle the appropriate letter.',
                   questions: [
-                    { id: 'L4Q37', number: 37, text: 'The speaker says students can visit her',        options: ['A: every morning', 'B: some mornings', 'C: mornings only', 'D: Friday morning'], answer: 'B' },
-                    { id: 'L4Q38', number: 38, text: 'According to the speaker, a tutorial',           options: ['A: is a type of lecture', 'B: is less important than a lecture', 'C: provides a chance to share views', 'D: provides an alternative to groupwork'], answer: 'C' },
-                    { id: 'L4Q39', number: 39, text: 'When writing essays, the speaker advises to',    options: ['A: research their work well', 'B: name the books they have read', 'C: share work with friends', "D: avoid using other writers' ideas"], answer: 'B' },
-                    { id: 'L4Q40', number: 40, text: 'The speaker thinks that plagiarism is',          options: ['A: a common problem', 'B: an acceptable risk', 'C: a minor concern', 'D: a serious offence'], answer: 'D' },
-                    { id: 'L4Q41', number: 41, text: "The speaker's aims are to",                      options: ['A: introduce students to university expectations', 'B: introduce students to the members of staff', 'C: warn students about the difficulties of studying', 'D: guide students round the university'], answer: 'A' },
+                    { id: 'L4Q37', number: 37, text: 'The speaker says students can visit her', options: ['A: every morning', 'B: some mornings', 'C: mornings only', 'D: Friday morning'], answer: 'B' },
+                    { id: 'L4Q38', number: 38, text: 'According to the speaker, a tutorial', options: ['A: is a type of lecture', 'B: is less important than a lecture', 'C: provides a chance to share views', 'D: provides an alternative to groupwork'], answer: 'C' },
+                    { id: 'L4Q39', number: 39, text: 'When writing essays, the speaker advises to', options: ['A: research their work well', 'B: name the books they have read', 'C: share work with friends', "D: avoid using other writers' ideas"], answer: 'B' },
+                    { id: 'L4Q40', number: 40, text: 'The speaker thinks that plagiarism is', options: ['A: a common problem', 'B: an acceptable risk', 'C: a minor concern', 'D: a serious offence'], answer: 'D' },
+                    { id: 'L4Q41', number: 41, text: "The speaker's aims are to", options: ['A: introduce students to university expectations', 'B: introduce students to the members of staff', 'C: warn students about the difficulties of studying', 'D: guide students round the university'], answer: 'A' },
                   ],
                 },
               ],
@@ -275,14 +277,14 @@ async function main() {
                   instruction: 'Complete the summary. Choose answers from the box.',
                   word_bank: ['Mexicans', 'random', 'rotating', 'despite', 'preserve', 'realising', 'sunlight', 'lacking', 'heavenly', 'percussion', 'chance', 'friction', 'unaware', 'without', 'make', 'heating', 'Eskimos', 'surprised', 'until', 'smoke'],
                   questions: [
-                    { id: 'R1Q1', number: 1,  text: 'They tried to [1] burning logs or charcoal',      answer: 'preserve' },
-                    { id: 'R1Q2', number: 2,  text: '[2] that they could create fire themselves',       answer: 'unaware' },
-                    { id: 'R1Q3', number: 3,  text: 'first man-made flames were produced by [3]',       answer: 'chance' },
-                    { id: 'R1Q4', number: 4,  text: 'first methods involved the creation of [4]',       answer: 'friction' },
-                    { id: 'R1Q5', number: 5,  text: 'by, for example, rapidly [5] a wooden stick',      answer: 'rotating' },
-                    { id: 'R1Q6', number: 6,  text: 'The use of [6] or persistent chipping',            answer: 'percussion' },
-                    { id: 'R1Q7', number: 7,  text: 'widespread among Chinese and [7]',                 answer: 'Eskimos' },
-                    { id: 'R1Q8', number: 8,  text: 'continued until 1850s [8] the discovery of phosphorus', answer: 'despite' },
+                    { id: 'R1Q1', number: 1, text: 'They tried to [1] burning logs or charcoal', answer: 'preserve' },
+                    { id: 'R1Q2', number: 2, text: '[2] that they could create fire themselves', answer: 'unaware' },
+                    { id: 'R1Q3', number: 3, text: 'first man-made flames were produced by [3]', answer: 'chance' },
+                    { id: 'R1Q4', number: 4, text: 'first methods involved the creation of [4]', answer: 'friction' },
+                    { id: 'R1Q5', number: 5, text: 'by, for example, rapidly [5] a wooden stick', answer: 'rotating' },
+                    { id: 'R1Q6', number: 6, text: 'The use of [6] or persistent chipping', answer: 'percussion' },
+                    { id: 'R1Q7', number: 7, text: 'widespread among Chinese and [7]', answer: 'Eskimos' },
+                    { id: 'R1Q8', number: 8, text: 'continued until 1850s [8] the discovery of phosphorus', answer: 'despite' },
                   ],
                 },
                 {
@@ -291,13 +293,13 @@ async function main() {
                   instruction: 'Decide which type of match (A-H) corresponds with each description.',
                   options: ['A: the Ethereal Match', 'B: the Instantaneous Light Box', 'C: Congreves', 'D: Lucifers', 'E: the first strike-anywhere match', "F: Lundstrom's safety match", 'G: book matches', 'H: waterproof matches'],
                   questions: [
-                    { id: 'R1Q9',  number: 9,  text: 'made using a less poisonous type of phosphorus', answer: 'F' },
-                    { id: 'R1Q10', number: 10, text: 'identical to a previous type of match',           answer: 'D' },
-                    { id: 'R1Q11', number: 11, text: 'caused a deadly illness',                          answer: 'E' },
-                    { id: 'R1Q12', number: 12, text: 'first to look like modern matches',                answer: 'C' },
-                    { id: 'R1Q13', number: 13, text: 'first matches used for advertising',               answer: 'G' },
-                    { id: 'R1Q14', number: 14, text: 'relied on an airtight glass container',            answer: 'A' },
-                    { id: 'R1Q15', number: 15, text: 'made with the help of an army design',             answer: 'C' },
+                    { id: 'R1Q9', number: 9, text: 'made using a less poisonous type of phosphorus', answer: 'F' },
+                    { id: 'R1Q10', number: 10, text: 'identical to a previous type of match', answer: 'D' },
+                    { id: 'R1Q11', number: 11, text: 'caused a deadly illness', answer: 'E' },
+                    { id: 'R1Q12', number: 12, text: 'first to look like modern matches', answer: 'C' },
+                    { id: 'R1Q13', number: 13, text: 'first matches used for advertising', answer: 'G' },
+                    { id: 'R1Q14', number: 14, text: 'relied on an airtight glass container', answer: 'A' },
+                    { id: 'R1Q15', number: 15, text: 'made with the help of an army design', answer: 'C' },
                   ],
                 },
               ],
@@ -313,11 +315,11 @@ async function main() {
                   questions_range: '16-22',
                   instruction: 'Do the following statements agree with the views of the writer?',
                   questions: [
-                    { id: 'R2Q16', number: 16, text: "London Zoo's advertisements are dishonest.",               answer: 'YES' },
+                    { id: 'R2Q16', number: 16, text: "London Zoo's advertisements are dishonest.", answer: 'YES' },
                     { id: 'R2Q17', number: 17, text: 'Zoos made an insignificant contribution to conservation up until 30 years ago.', answer: 'YES' },
-                    { id: 'R2Q18', number: 18, text: 'The WZCS document is not known in Eastern Europe.',         answer: 'NOT GIVEN' },
-                    { id: 'R2Q19', number: 19, text: 'Zoos in the WZCS select list were carefully inspected.',    answer: 'NO' },
-                    { id: 'R2Q20', number: 20, text: 'No-one knew how the animals were treated at Robin Hill.',   answer: 'NO' },
+                    { id: 'R2Q18', number: 18, text: 'The WZCS document is not known in Eastern Europe.', answer: 'NOT GIVEN' },
+                    { id: 'R2Q19', number: 19, text: 'Zoos in the WZCS select list were carefully inspected.', answer: 'NO' },
+                    { id: 'R2Q20', number: 20, text: 'No-one knew how the animals were treated at Robin Hill.', answer: 'NO' },
                     { id: 'R2Q21', number: 21, text: 'Colin Tudge was dissatisfied with treatment at London Zoo.', answer: 'NOT GIVEN' },
                     { id: 'R2Q22', number: 22, text: 'The number of successful zoo conservation programmes is unsatisfactory.', answer: 'YES' },
                   ],
@@ -327,7 +329,7 @@ async function main() {
                   questions_range: '23-25',
                   instruction: 'Choose the appropriate letters A-D.',
                   questions: [
-                    { id: 'R2Q23', number: 23, text: 'What were the objectives of the WZCS document?',       options: ['A: to improve the calibre of zoos world-wide', 'B: to identify zoos suitable for conservation practice', 'C: to provide funds for zoos in underdeveloped countries', 'D: to list the endangered species of the world'], answer: 'B' },
+                    { id: 'R2Q23', number: 23, text: 'What were the objectives of the WZCS document?', options: ['A: to improve the calibre of zoos world-wide', 'B: to identify zoos suitable for conservation practice', 'C: to provide funds for zoos in underdeveloped countries', 'D: to list the endangered species of the world'], answer: 'B' },
                     { id: 'R2Q24', number: 24, text: 'Why does the writer refer to Robin Hill Adventure Park?', options: ['A: to support the Isle of Wight local council', 'B: to criticise the 1981 Zoo Licensing Act', 'C: to illustrate a weakness in the WZCS document', 'D: to exemplify the standards in AAZPA zoos'], answer: 'C' },
                     { id: 'R2Q25', number: 25, text: "What word best describes the writer's response to Colin Tudge's prediction?", options: ['A: disbelieving', 'B: impartial', 'C: prejudiced', 'D: accepting'], answer: 'A' },
                   ],
@@ -354,12 +356,12 @@ async function main() {
                   table_headers: ['Period', 'Style of Period', 'Building Materials', 'Characteristics'],
                   questions: [
                     { id: 'R3Q29', number: 29, text: 'Before 18th century — Building Materials: ___', answer: 'timber and stone' },
-                    { id: 'R3Q30', number: 30, text: '1920s — Introduction of ___',                   answer: 'Modernism' },
-                    { id: 'R3Q31', number: 31, text: '1930s–1950s — Style: ___',                       answer: 'International Style' },
-                    { id: 'R3Q32', number: 32, text: '1960s — Characteristics: ___',                   answer: 'badly designed buildings / multi-storey housing' },
+                    { id: 'R3Q30', number: 30, text: '1920s — Introduction of ___', answer: 'Modernism' },
+                    { id: 'R3Q31', number: 31, text: '1930s–1950s — Style: ___', answer: 'International Style' },
+                    { id: 'R3Q32', number: 32, text: '1960s — Characteristics: ___', answer: 'badly designed buildings / multi-storey housing' },
                     { id: 'R3Q33', number: 33, text: '1970s — Characteristics: ___ of historic buildings', answer: 'preservation' },
-                    { id: 'R3Q34', number: 34, text: '1970s — Beginning of ___ era',                   answer: 'High-Tech' },
-                    { id: 'R3Q35', number: 35, text: '1980s — Post-Modernism — Characteristics: ___',  answer: 'co-existence of styles / different styles together' },
+                    { id: 'R3Q34', number: 34, text: '1970s — Beginning of ___ era', answer: 'High-Tech' },
+                    { id: 'R3Q35', number: 35, text: '1980s — Post-Modernism — Characteristics: ___', answer: 'co-existence of styles / different styles together' },
                   ],
                 },
                 {
@@ -369,10 +371,10 @@ async function main() {
                   effects: ['A: The quality of life is improved.', 'B: Architecture reflects the age.', 'C: A number of these have been knocked down.', 'D: Light steel frames and lifts are developed.', 'E: Historical buildings are preserved.', 'F: All decoration is removed.', 'G: Parts of cities become slums.', 'H: Modernist ideas cannot be put into practice until the second half of the 20th century.'],
                   questions: [
                     { id: 'R3Q36', number: 36, cause: 'A rapid movement of people from rural areas to cities.', answer: 'G' },
-                    { id: 'R3Q37', number: 37, cause: 'Buildings become simple and functional.',                 answer: 'F' },
+                    { id: 'R3Q37', number: 37, cause: 'Buildings become simple and functional.', answer: 'F' },
                     { id: 'R3Q38', number: 38, cause: 'An economic depression and the second world war hit Europe.', answer: 'H' },
-                    { id: 'R3Q39', number: 39, cause: 'Multi-storey housing estates are built.',                 answer: 'C' },
-                    { id: 'R3Q40', number: 40, cause: 'Less land must be used for building.',                    answer: 'D' },
+                    { id: 'R3Q39', number: 39, cause: 'Multi-storey housing estates are built.', answer: 'C' },
+                    { id: 'R3Q40', number: 40, cause: 'Less land must be used for building.', answer: 'D' },
                   ],
                 },
               ],
@@ -397,8 +399,8 @@ async function main() {
           examiner_notes: {
             clubs: [
               { name: 'Overseas Students Club', details: 'Meets once a week in Student Centre, near Library. Helps you to meet other students. Financial contributions welcome. All welcome.' },
-              { name: 'Chess Club',              details: 'Meets once a week in Library. Plays other universities. No subscription. Serious players only.' },
-              { name: 'Table Tennis Club',       details: 'Meets every day at lunch-time near canteen. Arranges tournaments. $5.00 subscription. All welcome.' },
+              { name: 'Chess Club', details: 'Meets once a week in Library. Plays other universities. No subscription. Serious players only.' },
+              { name: 'Table Tennis Club', details: 'Meets every day at lunch-time near canteen. Arranges tournaments. $5.00 subscription. All welcome.' },
             ],
           },
           time_minutes: 5,
@@ -414,11 +416,11 @@ async function main() {
   await prisma.skillTest.createMany({
     skipDuplicates: true,
     data: [
-      { id: 'st-pt1-writing-t1', skillContentId: 'wt1-pt1-t1',      skillTypeId: 3, numberOfVisits: 12 },
-      { id: 'st-pt1-writing-t2', skillContentId: 'wt1-pt1-t2',      skillTypeId: 3, numberOfVisits: 10 },
-      { id: 'st-pt1-listening',  skillContentId: 'sc-pt1-listening', skillTypeId: 1, numberOfVisits: 28 },
-      { id: 'st-pt1-reading',    skillContentId: 'sc-pt1-reading',   skillTypeId: 2, numberOfVisits: 31 },
-      { id: 'st-pt1-speaking',   skillContentId: 'sc-pt1-speaking',  skillTypeId: 4, numberOfVisits: 9  },
+      { id: 'st-pt1-writing-t1', skillContentId: 'wt1-pt1-t1', skillTypeId: 3, numberOfVisits: 12 },
+      { id: 'st-pt1-writing-t2', skillContentId: 'wt1-pt1-t2', skillTypeId: 3, numberOfVisits: 10 },
+      { id: 'st-pt1-listening', skillContentId: 'sc-pt1-listening', skillTypeId: 1, numberOfVisits: 28 },
+      { id: 'st-pt1-reading', skillContentId: 'sc-pt1-reading', skillTypeId: 2, numberOfVisits: 31 },
+      { id: 'st-pt1-speaking', skillContentId: 'sc-pt1-speaking', skillTypeId: 4, numberOfVisits: 9 },
     ],
   });
   console.log('✅ SkillTests seeded');
@@ -430,11 +432,11 @@ async function main() {
   await prisma.practiceTestSkill.createMany({
     skipDuplicates: true,
     data: [
-      { id: 'pts-pt1-listening',  practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-listening'  },
-      { id: 'pts-pt1-reading',    practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-reading'    },
+      { id: 'pts-pt1-listening', practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-listening' },
+      { id: 'pts-pt1-reading', practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-reading' },
       { id: 'pts-pt1-writing-t1', practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-writing-t1' },
       { id: 'pts-pt1-writing-t2', practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-writing-t2' },
-      { id: 'pts-pt1-speaking',   practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-speaking'   },
+      { id: 'pts-pt1-speaking', practiceTestId: 'pt-cambridge-1', skillTestId: 'st-pt1-speaking' },
     ],
   });
   console.log('✅ PracticeTestSkills seeded');
@@ -602,144 +604,144 @@ async function main() {
   // Alice's Listening answers — gets 30/41 correct
   const aliceListeningAnswers: AnswerRow[] = [
     // Section 1 — MC (Q1-5)
-    { id: 'ans-al-L1Q1',  attemptId: 'tsa-alice-listening', questionId: 'L1Q1',  userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 18 },
-    { id: 'ans-al-L1Q2',  attemptId: 'tsa-alice-listening', questionId: 'L1Q2',  userAnswer: 'B',               correctAnswer: 'C',               isCorrect: false, timeSpentSec: 22 },
-    { id: 'ans-al-L1Q3',  attemptId: 'tsa-alice-listening', questionId: 'L1Q3',  userAnswer: 'D',               correctAnswer: 'D',               isCorrect: true,  timeSpentSec: 15 },
-    { id: 'ans-al-L1Q4',  attemptId: 'tsa-alice-listening', questionId: 'L1Q4',  userAnswer: 'D',               correctAnswer: 'D',               isCorrect: true,  timeSpentSec: 20 },
-    { id: 'ans-al-L1Q5',  attemptId: 'tsa-alice-listening', questionId: 'L1Q5',  userAnswer: 'C',               correctAnswer: 'C',               isCorrect: true,  timeSpentSec: 17 },
+    { id: 'ans-al-L1Q1', attemptId: 'tsa-alice-listening', questionId: 'L1Q1', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 18 },
+    { id: 'ans-al-L1Q2', attemptId: 'tsa-alice-listening', questionId: 'L1Q2', userAnswer: 'B', correctAnswer: 'C', isCorrect: false, timeSpentSec: 22 },
+    { id: 'ans-al-L1Q3', attemptId: 'tsa-alice-listening', questionId: 'L1Q3', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 15 },
+    { id: 'ans-al-L1Q4', attemptId: 'tsa-alice-listening', questionId: 'L1Q4', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 20 },
+    { id: 'ans-al-L1Q5', attemptId: 'tsa-alice-listening', questionId: 'L1Q5', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 17 },
     // Section 1 — Form (Q6-10)
-    { id: 'ans-al-L1Q6',  attemptId: 'tsa-alice-listening', questionId: 'L1Q6',  userAnswer: 'Prescott',        correctAnswer: 'Prescott',        isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-al-L1Q7',  attemptId: 'tsa-alice-listening', questionId: 'L1Q7',  userAnswer: '41',              correctAnswer: '41',              isCorrect: true,  timeSpentSec: 10 },
-    { id: 'ans-al-L1Q8',  attemptId: 'tsa-alice-listening', questionId: 'L1Q8',  userAnswer: 'Fountain',        correctAnswer: 'Fountain',        isCorrect: true,  timeSpentSec: 11 },
-    { id: 'ans-al-L1Q9',  attemptId: 'tsa-alice-listening', questionId: 'L1Q9',  userAnswer: '752239',          correctAnswer: '752239',          isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-al-L1Q10', attemptId: 'tsa-alice-listening', questionId: 'L1Q10', userAnswer: '65',              correctAnswer: '65',              isCorrect: true,  timeSpentSec: 9  },
+    { id: 'ans-al-L1Q6', attemptId: 'tsa-alice-listening', questionId: 'L1Q6', userAnswer: 'Prescott', correctAnswer: 'Prescott', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-al-L1Q7', attemptId: 'tsa-alice-listening', questionId: 'L1Q7', userAnswer: '41', correctAnswer: '41', isCorrect: true, timeSpentSec: 10 },
+    { id: 'ans-al-L1Q8', attemptId: 'tsa-alice-listening', questionId: 'L1Q8', userAnswer: 'Fountain', correctAnswer: 'Fountain', isCorrect: true, timeSpentSec: 11 },
+    { id: 'ans-al-L1Q9', attemptId: 'tsa-alice-listening', questionId: 'L1Q9', userAnswer: '752239', correctAnswer: '752239', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-al-L1Q10', attemptId: 'tsa-alice-listening', questionId: 'L1Q10', userAnswer: '65', correctAnswer: '65', isCorrect: true, timeSpentSec: 9 },
     // Section 2 — Note (Q14-21)
-    { id: 'ans-al-L2Q14', attemptId: 'tsa-alice-listening', questionId: 'L2Q14', userAnswer: '250 million',     correctAnswer: '250 million',     isCorrect: true,  timeSpentSec: 13 },
-    { id: 'ans-al-L2Q15', attemptId: 'tsa-alice-listening', questionId: 'L2Q15', userAnswer: 'road system',     correctAnswer: 'roads / road system', isCorrect: true,  timeSpentSec: 18 },
-    { id: 'ans-al-L2Q16', attemptId: 'tsa-alice-listening', questionId: 'L2Q16', userAnswer: 'too early',       correctAnswer: 'too late',        isCorrect: false, timeSpentSec: 16 },
+    { id: 'ans-al-L2Q14', attemptId: 'tsa-alice-listening', questionId: 'L2Q14', userAnswer: '250 million', correctAnswer: '250 million', isCorrect: true, timeSpentSec: 13 },
+    { id: 'ans-al-L2Q15', attemptId: 'tsa-alice-listening', questionId: 'L2Q15', userAnswer: 'road system', correctAnswer: 'roads / road system', isCorrect: true, timeSpentSec: 18 },
+    { id: 'ans-al-L2Q16', attemptId: 'tsa-alice-listening', questionId: 'L2Q16', userAnswer: 'too early', correctAnswer: 'too late', isCorrect: false, timeSpentSec: 16 },
     { id: 'ans-al-L2Q17', attemptId: 'tsa-alice-listening', questionId: 'L2Q17', userAnswer: 'school children', correctAnswer: 'school children / boys', isCorrect: true, timeSpentSec: 14 },
-    { id: 'ans-al-L2Q18', attemptId: 'tsa-alice-listening', questionId: 'L2Q18', userAnswer: '3',               correctAnswer: '3',               isCorrect: true,  timeSpentSec: 8  },
-    { id: 'ans-al-L2Q19', attemptId: 'tsa-alice-listening', questionId: 'L2Q19', userAnswer: 'boats',           correctAnswer: 'boats / pleasure craft', isCorrect: true, timeSpentSec: 12 },
-    { id: 'ans-al-L2Q20', attemptId: 'tsa-alice-listening', questionId: 'L2Q20', userAnswer: 'pilot',           correctAnswer: 'pilot',           isCorrect: true,  timeSpentSec: 10 },
+    { id: 'ans-al-L2Q18', attemptId: 'tsa-alice-listening', questionId: 'L2Q18', userAnswer: '3', correctAnswer: '3', isCorrect: true, timeSpentSec: 8 },
+    { id: 'ans-al-L2Q19', attemptId: 'tsa-alice-listening', questionId: 'L2Q19', userAnswer: 'boats', correctAnswer: 'boats / pleasure craft', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-al-L2Q20', attemptId: 'tsa-alice-listening', questionId: 'L2Q20', userAnswer: 'pilot', correctAnswer: 'pilot', isCorrect: true, timeSpentSec: 10 },
     { id: 'ans-al-L2Q21', attemptId: 'tsa-alice-listening', questionId: 'L2Q21', userAnswer: 'musical instruments', correctAnswer: 'musical instruments', isCorrect: true, timeSpentSec: 11 },
     // Section 3 — MC (Q22-25)
-    { id: 'ans-al-L3Q22', attemptId: 'tsa-alice-listening', questionId: 'L3Q22', userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 15 },
-    { id: 'ans-al-L3Q23', attemptId: 'tsa-alice-listening', questionId: 'L3Q23', userAnswer: 'B',               correctAnswer: 'B',               isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-al-L3Q24', attemptId: 'tsa-alice-listening', questionId: 'L3Q24', userAnswer: 'D',               correctAnswer: 'C',               isCorrect: false, timeSpentSec: 20 },
-    { id: 'ans-al-L3Q25', attemptId: 'tsa-alice-listening', questionId: 'L3Q25', userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 12 },
+    { id: 'ans-al-L3Q22', attemptId: 'tsa-alice-listening', questionId: 'L3Q22', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 15 },
+    { id: 'ans-al-L3Q23', attemptId: 'tsa-alice-listening', questionId: 'L3Q23', userAnswer: 'B', correctAnswer: 'B', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-al-L3Q24', attemptId: 'tsa-alice-listening', questionId: 'L3Q24', userAnswer: 'D', correctAnswer: 'C', isCorrect: false, timeSpentSec: 20 },
+    { id: 'ans-al-L3Q25', attemptId: 'tsa-alice-listening', questionId: 'L3Q25', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 12 },
     // Section 3 — Note (Q26-31)
-    { id: 'ans-al-L3Q26', attemptId: 'tsa-alice-listening', questionId: 'L3Q26', userAnswer: 'give a talk',     correctAnswer: 'talk / give a talk', isCorrect: true, timeSpentSec: 16 },
-    { id: 'ans-al-L3Q27', attemptId: 'tsa-alice-listening', questionId: 'L3Q27', userAnswer: 'write up work',   correctAnswer: 'write up work',   isCorrect: true,  timeSpentSec: 13 },
-    { id: 'ans-al-L3Q28', attemptId: 'tsa-alice-listening', questionId: 'L3Q28', userAnswer: 'can choose',      correctAnswer: 'can choose',      isCorrect: true,  timeSpentSec: 11 },
-    { id: 'ans-al-L3Q29', attemptId: 'tsa-alice-listening', questionId: 'L3Q29', userAnswer: 'open book',       correctAnswer: 'open book',       isCorrect: true,  timeSpentSec: 10 },
-    { id: 'ans-al-L3Q30', attemptId: 'tsa-alice-listening', questionId: 'L3Q30', userAnswer: 'short loan',      correctAnswer: 'closed reserve',  isCorrect: false, timeSpentSec: 18 },
+    { id: 'ans-al-L3Q26', attemptId: 'tsa-alice-listening', questionId: 'L3Q26', userAnswer: 'give a talk', correctAnswer: 'talk / give a talk', isCorrect: true, timeSpentSec: 16 },
+    { id: 'ans-al-L3Q27', attemptId: 'tsa-alice-listening', questionId: 'L3Q27', userAnswer: 'write up work', correctAnswer: 'write up work', isCorrect: true, timeSpentSec: 13 },
+    { id: 'ans-al-L3Q28', attemptId: 'tsa-alice-listening', questionId: 'L3Q28', userAnswer: 'can choose', correctAnswer: 'can choose', isCorrect: true, timeSpentSec: 11 },
+    { id: 'ans-al-L3Q29', attemptId: 'tsa-alice-listening', questionId: 'L3Q29', userAnswer: 'open book', correctAnswer: 'open book', isCorrect: true, timeSpentSec: 10 },
+    { id: 'ans-al-L3Q30', attemptId: 'tsa-alice-listening', questionId: 'L3Q30', userAnswer: 'short loan', correctAnswer: 'closed reserve', isCorrect: false, timeSpentSec: 18 },
     { id: 'ans-al-L3Q31', attemptId: 'tsa-alice-listening', questionId: 'L3Q31', userAnswer: 'vocational subjects', correctAnswer: 'vocational subjects / preparing for work', isCorrect: true, timeSpentSec: 14 },
     // Section 4 — MC (Q32-33)
-    { id: 'ans-al-L4Q32', attemptId: 'tsa-alice-listening', questionId: 'L4Q32', userAnswer: 'B',               correctAnswer: 'B',               isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-al-L4Q33', attemptId: 'tsa-alice-listening', questionId: 'L4Q33', userAnswer: 'C',               correctAnswer: 'C',               isCorrect: true,  timeSpentSec: 13 },
+    { id: 'ans-al-L4Q32', attemptId: 'tsa-alice-listening', questionId: 'L4Q32', userAnswer: 'B', correctAnswer: 'B', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-al-L4Q33', attemptId: 'tsa-alice-listening', questionId: 'L4Q33', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 13 },
     // Section 4 — Note (Q34-36)
     { id: 'ans-al-L4Q34', attemptId: 'tsa-alice-listening', questionId: 'L4Q34', userAnswer: 'history and economics', correctAnswer: 'history and economics', isCorrect: true, timeSpentSec: 16 },
     { id: 'ans-al-L4Q35', attemptId: 'tsa-alice-listening', questionId: 'L4Q35', userAnswer: 'meeting deadlines', correctAnswer: 'meeting deadlines (for essays)', isCorrect: true, timeSpentSec: 15 },
-    { id: 'ans-al-L4Q36', attemptId: 'tsa-alice-listening', questionId: 'L4Q36', userAnswer: 'attendance',      correctAnswer: 'attendance',      isCorrect: true,  timeSpentSec: 10 },
+    { id: 'ans-al-L4Q36', attemptId: 'tsa-alice-listening', questionId: 'L4Q36', userAnswer: 'attendance', correctAnswer: 'attendance', isCorrect: true, timeSpentSec: 10 },
     // Section 4 — MC (Q37-41)
-    { id: 'ans-al-L4Q37', attemptId: 'tsa-alice-listening', questionId: 'L4Q37', userAnswer: 'B',               correctAnswer: 'B',               isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-al-L4Q38', attemptId: 'tsa-alice-listening', questionId: 'L4Q38', userAnswer: 'C',               correctAnswer: 'C',               isCorrect: true,  timeSpentSec: 13 },
-    { id: 'ans-al-L4Q39', attemptId: 'tsa-alice-listening', questionId: 'L4Q39', userAnswer: 'A',               correctAnswer: 'B',               isCorrect: false, timeSpentSec: 20 },
-    { id: 'ans-al-L4Q40', attemptId: 'tsa-alice-listening', questionId: 'L4Q40', userAnswer: 'D',               correctAnswer: 'D',               isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-al-L4Q41', attemptId: 'tsa-alice-listening', questionId: 'L4Q41', userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 11 },
+    { id: 'ans-al-L4Q37', attemptId: 'tsa-alice-listening', questionId: 'L4Q37', userAnswer: 'B', correctAnswer: 'B', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-al-L4Q38', attemptId: 'tsa-alice-listening', questionId: 'L4Q38', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 13 },
+    { id: 'ans-al-L4Q39', attemptId: 'tsa-alice-listening', questionId: 'L4Q39', userAnswer: 'A', correctAnswer: 'B', isCorrect: false, timeSpentSec: 20 },
+    { id: 'ans-al-L4Q40', attemptId: 'tsa-alice-listening', questionId: 'L4Q40', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-al-L4Q41', attemptId: 'tsa-alice-listening', questionId: 'L4Q41', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 11 },
   ];
 
   // Alice's Reading answers — gets 32/40 correct
   const aliceReadingAnswers: AnswerRow[] = [
     // Passage 1 — Summary (Q1-8)
-    { id: 'ans-al-R1Q1',  attemptId: 'tsa-alice-reading', questionId: 'R1Q1',  userAnswer: 'preserve',    correctAnswer: 'preserve',    isCorrect: true,  timeSpentSec: 30 },
-    { id: 'ans-al-R1Q2',  attemptId: 'tsa-alice-reading', questionId: 'R1Q2',  userAnswer: 'unaware',     correctAnswer: 'unaware',     isCorrect: true,  timeSpentSec: 28 },
-    { id: 'ans-al-R1Q3',  attemptId: 'tsa-alice-reading', questionId: 'R1Q3',  userAnswer: 'chance',      correctAnswer: 'chance',      isCorrect: true,  timeSpentSec: 25 },
-    { id: 'ans-al-R1Q4',  attemptId: 'tsa-alice-reading', questionId: 'R1Q4',  userAnswer: 'friction',    correctAnswer: 'friction',    isCorrect: true,  timeSpentSec: 22 },
-    { id: 'ans-al-R1Q5',  attemptId: 'tsa-alice-reading', questionId: 'R1Q5',  userAnswer: 'rotating',    correctAnswer: 'rotating',    isCorrect: true,  timeSpentSec: 24 },
-    { id: 'ans-al-R1Q6',  attemptId: 'tsa-alice-reading', questionId: 'R1Q6',  userAnswer: 'heating',     correctAnswer: 'percussion',  isCorrect: false, timeSpentSec: 35 },
-    { id: 'ans-al-R1Q7',  attemptId: 'tsa-alice-reading', questionId: 'R1Q7',  userAnswer: 'Eskimos',     correctAnswer: 'Eskimos',     isCorrect: true,  timeSpentSec: 20 },
-    { id: 'ans-al-R1Q8',  attemptId: 'tsa-alice-reading', questionId: 'R1Q8',  userAnswer: 'despite',     correctAnswer: 'despite',     isCorrect: true,  timeSpentSec: 22 },
+    { id: 'ans-al-R1Q1', attemptId: 'tsa-alice-reading', questionId: 'R1Q1', userAnswer: 'preserve', correctAnswer: 'preserve', isCorrect: true, timeSpentSec: 30 },
+    { id: 'ans-al-R1Q2', attemptId: 'tsa-alice-reading', questionId: 'R1Q2', userAnswer: 'unaware', correctAnswer: 'unaware', isCorrect: true, timeSpentSec: 28 },
+    { id: 'ans-al-R1Q3', attemptId: 'tsa-alice-reading', questionId: 'R1Q3', userAnswer: 'chance', correctAnswer: 'chance', isCorrect: true, timeSpentSec: 25 },
+    { id: 'ans-al-R1Q4', attemptId: 'tsa-alice-reading', questionId: 'R1Q4', userAnswer: 'friction', correctAnswer: 'friction', isCorrect: true, timeSpentSec: 22 },
+    { id: 'ans-al-R1Q5', attemptId: 'tsa-alice-reading', questionId: 'R1Q5', userAnswer: 'rotating', correctAnswer: 'rotating', isCorrect: true, timeSpentSec: 24 },
+    { id: 'ans-al-R1Q6', attemptId: 'tsa-alice-reading', questionId: 'R1Q6', userAnswer: 'heating', correctAnswer: 'percussion', isCorrect: false, timeSpentSec: 35 },
+    { id: 'ans-al-R1Q7', attemptId: 'tsa-alice-reading', questionId: 'R1Q7', userAnswer: 'Eskimos', correctAnswer: 'Eskimos', isCorrect: true, timeSpentSec: 20 },
+    { id: 'ans-al-R1Q8', attemptId: 'tsa-alice-reading', questionId: 'R1Q8', userAnswer: 'despite', correctAnswer: 'despite', isCorrect: true, timeSpentSec: 22 },
     // Passage 1 — Matching (Q9-15)
-    { id: 'ans-al-R1Q9',  attemptId: 'tsa-alice-reading', questionId: 'R1Q9',  userAnswer: 'F',           correctAnswer: 'F',           isCorrect: true,  timeSpentSec: 40 },
-    { id: 'ans-al-R1Q10', attemptId: 'tsa-alice-reading', questionId: 'R1Q10', userAnswer: 'D',           correctAnswer: 'D',           isCorrect: true,  timeSpentSec: 38 },
-    { id: 'ans-al-R1Q11', attemptId: 'tsa-alice-reading', questionId: 'R1Q11', userAnswer: 'C',           correctAnswer: 'E',           isCorrect: false, timeSpentSec: 45 },
-    { id: 'ans-al-R1Q12', attemptId: 'tsa-alice-reading', questionId: 'R1Q12', userAnswer: 'C',           correctAnswer: 'C',           isCorrect: true,  timeSpentSec: 36 },
-    { id: 'ans-al-R1Q13', attemptId: 'tsa-alice-reading', questionId: 'R1Q13', userAnswer: 'G',           correctAnswer: 'G',           isCorrect: true,  timeSpentSec: 32 },
-    { id: 'ans-al-R1Q14', attemptId: 'tsa-alice-reading', questionId: 'R1Q14', userAnswer: 'A',           correctAnswer: 'A',           isCorrect: true,  timeSpentSec: 30 },
-    { id: 'ans-al-R1Q15', attemptId: 'tsa-alice-reading', questionId: 'R1Q15', userAnswer: 'C',           correctAnswer: 'C',           isCorrect: true,  timeSpentSec: 33 },
+    { id: 'ans-al-R1Q9', attemptId: 'tsa-alice-reading', questionId: 'R1Q9', userAnswer: 'F', correctAnswer: 'F', isCorrect: true, timeSpentSec: 40 },
+    { id: 'ans-al-R1Q10', attemptId: 'tsa-alice-reading', questionId: 'R1Q10', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 38 },
+    { id: 'ans-al-R1Q11', attemptId: 'tsa-alice-reading', questionId: 'R1Q11', userAnswer: 'C', correctAnswer: 'E', isCorrect: false, timeSpentSec: 45 },
+    { id: 'ans-al-R1Q12', attemptId: 'tsa-alice-reading', questionId: 'R1Q12', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 36 },
+    { id: 'ans-al-R1Q13', attemptId: 'tsa-alice-reading', questionId: 'R1Q13', userAnswer: 'G', correctAnswer: 'G', isCorrect: true, timeSpentSec: 32 },
+    { id: 'ans-al-R1Q14', attemptId: 'tsa-alice-reading', questionId: 'R1Q14', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 30 },
+    { id: 'ans-al-R1Q15', attemptId: 'tsa-alice-reading', questionId: 'R1Q15', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 33 },
     // Passage 2 — Y/N/NG (Q16-22)
-    { id: 'ans-al-R2Q16', attemptId: 'tsa-alice-reading', questionId: 'R2Q16', userAnswer: 'YES',         correctAnswer: 'YES',         isCorrect: true,  timeSpentSec: 28 },
-    { id: 'ans-al-R2Q17', attemptId: 'tsa-alice-reading', questionId: 'R2Q17', userAnswer: 'YES',         correctAnswer: 'YES',         isCorrect: true,  timeSpentSec: 26 },
-    { id: 'ans-al-R2Q18', attemptId: 'tsa-alice-reading', questionId: 'R2Q18', userAnswer: 'NO',          correctAnswer: 'NOT GIVEN',   isCorrect: false, timeSpentSec: 40 },
-    { id: 'ans-al-R2Q19', attemptId: 'tsa-alice-reading', questionId: 'R2Q19', userAnswer: 'NO',          correctAnswer: 'NO',          isCorrect: true,  timeSpentSec: 24 },
-    { id: 'ans-al-R2Q20', attemptId: 'tsa-alice-reading', questionId: 'R2Q20', userAnswer: 'NO',          correctAnswer: 'NO',          isCorrect: true,  timeSpentSec: 22 },
-    { id: 'ans-al-R2Q21', attemptId: 'tsa-alice-reading', questionId: 'R2Q21', userAnswer: 'NOT GIVEN',   correctAnswer: 'NOT GIVEN',   isCorrect: true,  timeSpentSec: 30 },
-    { id: 'ans-al-R2Q22', attemptId: 'tsa-alice-reading', questionId: 'R2Q22', userAnswer: 'YES',         correctAnswer: 'YES',         isCorrect: true,  timeSpentSec: 25 },
+    { id: 'ans-al-R2Q16', attemptId: 'tsa-alice-reading', questionId: 'R2Q16', userAnswer: 'YES', correctAnswer: 'YES', isCorrect: true, timeSpentSec: 28 },
+    { id: 'ans-al-R2Q17', attemptId: 'tsa-alice-reading', questionId: 'R2Q17', userAnswer: 'YES', correctAnswer: 'YES', isCorrect: true, timeSpentSec: 26 },
+    { id: 'ans-al-R2Q18', attemptId: 'tsa-alice-reading', questionId: 'R2Q18', userAnswer: 'NO', correctAnswer: 'NOT GIVEN', isCorrect: false, timeSpentSec: 40 },
+    { id: 'ans-al-R2Q19', attemptId: 'tsa-alice-reading', questionId: 'R2Q19', userAnswer: 'NO', correctAnswer: 'NO', isCorrect: true, timeSpentSec: 24 },
+    { id: 'ans-al-R2Q20', attemptId: 'tsa-alice-reading', questionId: 'R2Q20', userAnswer: 'NO', correctAnswer: 'NO', isCorrect: true, timeSpentSec: 22 },
+    { id: 'ans-al-R2Q21', attemptId: 'tsa-alice-reading', questionId: 'R2Q21', userAnswer: 'NOT GIVEN', correctAnswer: 'NOT GIVEN', isCorrect: true, timeSpentSec: 30 },
+    { id: 'ans-al-R2Q22', attemptId: 'tsa-alice-reading', questionId: 'R2Q22', userAnswer: 'YES', correctAnswer: 'YES', isCorrect: true, timeSpentSec: 25 },
     // Passage 2 — MC (Q23-25)
-    { id: 'ans-al-R2Q23', attemptId: 'tsa-alice-reading', questionId: 'R2Q23', userAnswer: 'B',           correctAnswer: 'B',           isCorrect: true,  timeSpentSec: 35 },
-    { id: 'ans-al-R2Q24', attemptId: 'tsa-alice-reading', questionId: 'R2Q24', userAnswer: 'C',           correctAnswer: 'C',           isCorrect: true,  timeSpentSec: 33 },
-    { id: 'ans-al-R2Q25', attemptId: 'tsa-alice-reading', questionId: 'R2Q25', userAnswer: 'B',           correctAnswer: 'A',           isCorrect: false, timeSpentSec: 40 },
+    { id: 'ans-al-R2Q23', attemptId: 'tsa-alice-reading', questionId: 'R2Q23', userAnswer: 'B', correctAnswer: 'B', isCorrect: true, timeSpentSec: 35 },
+    { id: 'ans-al-R2Q24', attemptId: 'tsa-alice-reading', questionId: 'R2Q24', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 33 },
+    { id: 'ans-al-R2Q25', attemptId: 'tsa-alice-reading', questionId: 'R2Q25', userAnswer: 'B', correctAnswer: 'A', isCorrect: false, timeSpentSec: 40 },
     // Passage 2 — Selecting (Q26-28)
-    { id: 'ans-al-R2Q26', attemptId: 'tsa-alice-reading', questionId: 'R2Q26', userAnswer: 'A',           correctAnswer: 'A',           isCorrect: true,  timeSpentSec: 30 },
-    { id: 'ans-al-R2Q27', attemptId: 'tsa-alice-reading', questionId: 'R2Q27', userAnswer: 'D',           correctAnswer: 'D',           isCorrect: true,  timeSpentSec: 28 },
-    { id: 'ans-al-R2Q28', attemptId: 'tsa-alice-reading', questionId: 'R2Q28', userAnswer: 'E',           correctAnswer: 'E',           isCorrect: true,  timeSpentSec: 32 },
+    { id: 'ans-al-R2Q26', attemptId: 'tsa-alice-reading', questionId: 'R2Q26', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 30 },
+    { id: 'ans-al-R2Q27', attemptId: 'tsa-alice-reading', questionId: 'R2Q27', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 28 },
+    { id: 'ans-al-R2Q28', attemptId: 'tsa-alice-reading', questionId: 'R2Q28', userAnswer: 'E', correctAnswer: 'E', isCorrect: true, timeSpentSec: 32 },
     // Passage 3 — Table (Q29-35)
-    { id: 'ans-al-R3Q29', attemptId: 'tsa-alice-reading', questionId: 'R3Q29', userAnswer: 'timber and stone',     correctAnswer: 'timber and stone',     isCorrect: true,  timeSpentSec: 25 },
-    { id: 'ans-al-R3Q30', attemptId: 'tsa-alice-reading', questionId: 'R3Q30', userAnswer: 'Modernism',            correctAnswer: 'Modernism',            isCorrect: true,  timeSpentSec: 20 },
-    { id: 'ans-al-R3Q31', attemptId: 'tsa-alice-reading', questionId: 'R3Q31', userAnswer: 'International Style',  correctAnswer: 'International Style',  isCorrect: true,  timeSpentSec: 22 },
+    { id: 'ans-al-R3Q29', attemptId: 'tsa-alice-reading', questionId: 'R3Q29', userAnswer: 'timber and stone', correctAnswer: 'timber and stone', isCorrect: true, timeSpentSec: 25 },
+    { id: 'ans-al-R3Q30', attemptId: 'tsa-alice-reading', questionId: 'R3Q30', userAnswer: 'Modernism', correctAnswer: 'Modernism', isCorrect: true, timeSpentSec: 20 },
+    { id: 'ans-al-R3Q31', attemptId: 'tsa-alice-reading', questionId: 'R3Q31', userAnswer: 'International Style', correctAnswer: 'International Style', isCorrect: true, timeSpentSec: 22 },
     { id: 'ans-al-R3Q32', attemptId: 'tsa-alice-reading', questionId: 'R3Q32', userAnswer: 'multi-storey housing', correctAnswer: 'badly designed buildings / multi-storey housing', isCorrect: true, timeSpentSec: 28 },
-    { id: 'ans-al-R3Q33', attemptId: 'tsa-alice-reading', questionId: 'R3Q33', userAnswer: 'preservation',         correctAnswer: 'preservation',         isCorrect: true,  timeSpentSec: 20 },
-    { id: 'ans-al-R3Q34', attemptId: 'tsa-alice-reading', questionId: 'R3Q34', userAnswer: 'High-Tech',            correctAnswer: 'High-Tech',            isCorrect: true,  timeSpentSec: 18 },
+    { id: 'ans-al-R3Q33', attemptId: 'tsa-alice-reading', questionId: 'R3Q33', userAnswer: 'preservation', correctAnswer: 'preservation', isCorrect: true, timeSpentSec: 20 },
+    { id: 'ans-al-R3Q34', attemptId: 'tsa-alice-reading', questionId: 'R3Q34', userAnswer: 'High-Tech', correctAnswer: 'High-Tech', isCorrect: true, timeSpentSec: 18 },
     { id: 'ans-al-R3Q35', attemptId: 'tsa-alice-reading', questionId: 'R3Q35', userAnswer: 'co-existence of styles', correctAnswer: 'co-existence of styles / different styles together', isCorrect: true, timeSpentSec: 30 },
     // Passage 3 — Cause/Effect (Q36-40)
-    { id: 'ans-al-R3Q36', attemptId: 'tsa-alice-reading', questionId: 'R3Q36', userAnswer: 'G',           correctAnswer: 'G',           isCorrect: true,  timeSpentSec: 35 },
-    { id: 'ans-al-R3Q37', attemptId: 'tsa-alice-reading', questionId: 'R3Q37', userAnswer: 'F',           correctAnswer: 'F',           isCorrect: true,  timeSpentSec: 30 },
-    { id: 'ans-al-R3Q38', attemptId: 'tsa-alice-reading', questionId: 'R3Q38', userAnswer: 'H',           correctAnswer: 'H',           isCorrect: true,  timeSpentSec: 28 },
-    { id: 'ans-al-R3Q39', attemptId: 'tsa-alice-reading', questionId: 'R3Q39', userAnswer: 'C',           correctAnswer: 'C',           isCorrect: true,  timeSpentSec: 25 },
-    { id: 'ans-al-R3Q40', attemptId: 'tsa-alice-reading', questionId: 'R3Q40', userAnswer: 'B',           correctAnswer: 'D',           isCorrect: false, timeSpentSec: 40 },
+    { id: 'ans-al-R3Q36', attemptId: 'tsa-alice-reading', questionId: 'R3Q36', userAnswer: 'G', correctAnswer: 'G', isCorrect: true, timeSpentSec: 35 },
+    { id: 'ans-al-R3Q37', attemptId: 'tsa-alice-reading', questionId: 'R3Q37', userAnswer: 'F', correctAnswer: 'F', isCorrect: true, timeSpentSec: 30 },
+    { id: 'ans-al-R3Q38', attemptId: 'tsa-alice-reading', questionId: 'R3Q38', userAnswer: 'H', correctAnswer: 'H', isCorrect: true, timeSpentSec: 28 },
+    { id: 'ans-al-R3Q39', attemptId: 'tsa-alice-reading', questionId: 'R3Q39', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 25 },
+    { id: 'ans-al-R3Q40', attemptId: 'tsa-alice-reading', questionId: 'R3Q40', userAnswer: 'B', correctAnswer: 'D', isCorrect: false, timeSpentSec: 40 },
   ];
 
   // Bob's Listening answers — gets 24/41 correct (weaker student)
   const bobListeningAnswers: AnswerRow[] = [
-    { id: 'ans-bob-L1Q1',  attemptId: 'tsa-bob-listening', questionId: 'L1Q1',  userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 25 },
-    { id: 'ans-bob-L1Q2',  attemptId: 'tsa-bob-listening', questionId: 'L1Q2',  userAnswer: 'A',               correctAnswer: 'C',               isCorrect: false, timeSpentSec: 30 },
-    { id: 'ans-bob-L1Q3',  attemptId: 'tsa-bob-listening', questionId: 'L1Q3',  userAnswer: 'B',               correctAnswer: 'D',               isCorrect: false, timeSpentSec: 28 },
-    { id: 'ans-bob-L1Q4',  attemptId: 'tsa-bob-listening', questionId: 'L1Q4',  userAnswer: 'D',               correctAnswer: 'D',               isCorrect: true,  timeSpentSec: 22 },
-    { id: 'ans-bob-L1Q5',  attemptId: 'tsa-bob-listening', questionId: 'L1Q5',  userAnswer: 'B',               correctAnswer: 'C',               isCorrect: false, timeSpentSec: 25 },
-    { id: 'ans-bob-L1Q6',  attemptId: 'tsa-bob-listening', questionId: 'L1Q6',  userAnswer: 'Preston',         correctAnswer: 'Prescott',        isCorrect: false, timeSpentSec: 18 },
-    { id: 'ans-bob-L1Q7',  attemptId: 'tsa-bob-listening', questionId: 'L1Q7',  userAnswer: '41',              correctAnswer: '41',              isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-bob-L1Q8',  attemptId: 'tsa-bob-listening', questionId: 'L1Q8',  userAnswer: 'Fountain',        correctAnswer: 'Fountain',        isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-bob-L1Q9',  attemptId: 'tsa-bob-listening', questionId: 'L1Q9',  userAnswer: '752239',          correctAnswer: '752239',          isCorrect: true,  timeSpentSec: 15 },
-    { id: 'ans-bob-L1Q10', attemptId: 'tsa-bob-listening', questionId: 'L1Q10', userAnswer: '60',              correctAnswer: '65',              isCorrect: false, timeSpentSec: 18 },
-    { id: 'ans-bob-L2Q14', attemptId: 'tsa-bob-listening', questionId: 'L2Q14', userAnswer: '250 million',     correctAnswer: '250 million',     isCorrect: true,  timeSpentSec: 16 },
-    { id: 'ans-bob-L2Q15', attemptId: 'tsa-bob-listening', questionId: 'L2Q15', userAnswer: 'parks',           correctAnswer: 'roads / road system', isCorrect: false, timeSpentSec: 22 },
-    { id: 'ans-bob-L2Q16', attemptId: 'tsa-bob-listening', questionId: 'L2Q16', userAnswer: 'too late',        correctAnswer: 'too late',        isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-bob-L2Q17', attemptId: 'tsa-bob-listening', questionId: 'L2Q17', userAnswer: 'tourists',        correctAnswer: 'school children / boys', isCorrect: false, timeSpentSec: 20 },
-    { id: 'ans-bob-L2Q18', attemptId: 'tsa-bob-listening', questionId: 'L2Q18', userAnswer: '3',               correctAnswer: '3',               isCorrect: true,  timeSpentSec: 10 },
-    { id: 'ans-bob-L2Q19', attemptId: 'tsa-bob-listening', questionId: 'L2Q19', userAnswer: 'boats',           correctAnswer: 'boats / pleasure craft', isCorrect: true, timeSpentSec: 14 },
-    { id: 'ans-bob-L2Q20', attemptId: 'tsa-bob-listening', questionId: 'L2Q20', userAnswer: 'pilot',           correctAnswer: 'pilot',           isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-bob-L2Q21', attemptId: 'tsa-bob-listening', questionId: 'L2Q21', userAnswer: 'luggage',         correctAnswer: 'musical instruments', isCorrect: false, timeSpentSec: 18 },
-    { id: 'ans-bob-L3Q22', attemptId: 'tsa-bob-listening', questionId: 'L3Q22', userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 16 },
-    { id: 'ans-bob-L3Q23', attemptId: 'tsa-bob-listening', questionId: 'L3Q23', userAnswer: 'A',               correctAnswer: 'B',               isCorrect: false, timeSpentSec: 20 },
-    { id: 'ans-bob-L3Q24', attemptId: 'tsa-bob-listening', questionId: 'L3Q24', userAnswer: 'C',               correctAnswer: 'C',               isCorrect: true,  timeSpentSec: 18 },
-    { id: 'ans-bob-L3Q25', attemptId: 'tsa-bob-listening', questionId: 'L3Q25', userAnswer: 'A',               correctAnswer: 'A',               isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-bob-L3Q26', attemptId: 'tsa-bob-listening', questionId: 'L3Q26', userAnswer: 'present',         correctAnswer: 'talk / give a talk', isCorrect: false, timeSpentSec: 22 },
-    { id: 'ans-bob-L3Q27', attemptId: 'tsa-bob-listening', questionId: 'L3Q27', userAnswer: 'write up work',   correctAnswer: 'write up work',   isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-bob-L3Q28', attemptId: 'tsa-bob-listening', questionId: 'L3Q28', userAnswer: 'assigned topic',  correctAnswer: 'can choose',      isCorrect: false, timeSpentSec: 20 },
-    { id: 'ans-bob-L3Q29', attemptId: 'tsa-bob-listening', questionId: 'L3Q29', userAnswer: 'open book',       correctAnswer: 'open book',       isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-bob-L3Q30', attemptId: 'tsa-bob-listening', questionId: 'L3Q30', userAnswer: 'closed reserve',  correctAnswer: 'closed reserve',  isCorrect: true,  timeSpentSec: 14 },
+    { id: 'ans-bob-L1Q1', attemptId: 'tsa-bob-listening', questionId: 'L1Q1', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 25 },
+    { id: 'ans-bob-L1Q2', attemptId: 'tsa-bob-listening', questionId: 'L1Q2', userAnswer: 'A', correctAnswer: 'C', isCorrect: false, timeSpentSec: 30 },
+    { id: 'ans-bob-L1Q3', attemptId: 'tsa-bob-listening', questionId: 'L1Q3', userAnswer: 'B', correctAnswer: 'D', isCorrect: false, timeSpentSec: 28 },
+    { id: 'ans-bob-L1Q4', attemptId: 'tsa-bob-listening', questionId: 'L1Q4', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 22 },
+    { id: 'ans-bob-L1Q5', attemptId: 'tsa-bob-listening', questionId: 'L1Q5', userAnswer: 'B', correctAnswer: 'C', isCorrect: false, timeSpentSec: 25 },
+    { id: 'ans-bob-L1Q6', attemptId: 'tsa-bob-listening', questionId: 'L1Q6', userAnswer: 'Preston', correctAnswer: 'Prescott', isCorrect: false, timeSpentSec: 18 },
+    { id: 'ans-bob-L1Q7', attemptId: 'tsa-bob-listening', questionId: 'L1Q7', userAnswer: '41', correctAnswer: '41', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-bob-L1Q8', attemptId: 'tsa-bob-listening', questionId: 'L1Q8', userAnswer: 'Fountain', correctAnswer: 'Fountain', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-bob-L1Q9', attemptId: 'tsa-bob-listening', questionId: 'L1Q9', userAnswer: '752239', correctAnswer: '752239', isCorrect: true, timeSpentSec: 15 },
+    { id: 'ans-bob-L1Q10', attemptId: 'tsa-bob-listening', questionId: 'L1Q10', userAnswer: '60', correctAnswer: '65', isCorrect: false, timeSpentSec: 18 },
+    { id: 'ans-bob-L2Q14', attemptId: 'tsa-bob-listening', questionId: 'L2Q14', userAnswer: '250 million', correctAnswer: '250 million', isCorrect: true, timeSpentSec: 16 },
+    { id: 'ans-bob-L2Q15', attemptId: 'tsa-bob-listening', questionId: 'L2Q15', userAnswer: 'parks', correctAnswer: 'roads / road system', isCorrect: false, timeSpentSec: 22 },
+    { id: 'ans-bob-L2Q16', attemptId: 'tsa-bob-listening', questionId: 'L2Q16', userAnswer: 'too late', correctAnswer: 'too late', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-bob-L2Q17', attemptId: 'tsa-bob-listening', questionId: 'L2Q17', userAnswer: 'tourists', correctAnswer: 'school children / boys', isCorrect: false, timeSpentSec: 20 },
+    { id: 'ans-bob-L2Q18', attemptId: 'tsa-bob-listening', questionId: 'L2Q18', userAnswer: '3', correctAnswer: '3', isCorrect: true, timeSpentSec: 10 },
+    { id: 'ans-bob-L2Q19', attemptId: 'tsa-bob-listening', questionId: 'L2Q19', userAnswer: 'boats', correctAnswer: 'boats / pleasure craft', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-bob-L2Q20', attemptId: 'tsa-bob-listening', questionId: 'L2Q20', userAnswer: 'pilot', correctAnswer: 'pilot', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-bob-L2Q21', attemptId: 'tsa-bob-listening', questionId: 'L2Q21', userAnswer: 'luggage', correctAnswer: 'musical instruments', isCorrect: false, timeSpentSec: 18 },
+    { id: 'ans-bob-L3Q22', attemptId: 'tsa-bob-listening', questionId: 'L3Q22', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 16 },
+    { id: 'ans-bob-L3Q23', attemptId: 'tsa-bob-listening', questionId: 'L3Q23', userAnswer: 'A', correctAnswer: 'B', isCorrect: false, timeSpentSec: 20 },
+    { id: 'ans-bob-L3Q24', attemptId: 'tsa-bob-listening', questionId: 'L3Q24', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 18 },
+    { id: 'ans-bob-L3Q25', attemptId: 'tsa-bob-listening', questionId: 'L3Q25', userAnswer: 'A', correctAnswer: 'A', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-bob-L3Q26', attemptId: 'tsa-bob-listening', questionId: 'L3Q26', userAnswer: 'present', correctAnswer: 'talk / give a talk', isCorrect: false, timeSpentSec: 22 },
+    { id: 'ans-bob-L3Q27', attemptId: 'tsa-bob-listening', questionId: 'L3Q27', userAnswer: 'write up work', correctAnswer: 'write up work', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-bob-L3Q28', attemptId: 'tsa-bob-listening', questionId: 'L3Q28', userAnswer: 'assigned topic', correctAnswer: 'can choose', isCorrect: false, timeSpentSec: 20 },
+    { id: 'ans-bob-L3Q29', attemptId: 'tsa-bob-listening', questionId: 'L3Q29', userAnswer: 'open book', correctAnswer: 'open book', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-bob-L3Q30', attemptId: 'tsa-bob-listening', questionId: 'L3Q30', userAnswer: 'closed reserve', correctAnswer: 'closed reserve', isCorrect: true, timeSpentSec: 14 },
     { id: 'ans-bob-L3Q31', attemptId: 'tsa-bob-listening', questionId: 'L3Q31', userAnswer: 'vocational subjects', correctAnswer: 'vocational subjects / preparing for work', isCorrect: true, timeSpentSec: 16 },
-    { id: 'ans-bob-L4Q32', attemptId: 'tsa-bob-listening', questionId: 'L4Q32', userAnswer: 'A',               correctAnswer: 'B',               isCorrect: false, timeSpentSec: 18 },
-    { id: 'ans-bob-L4Q33', attemptId: 'tsa-bob-listening', questionId: 'L4Q33', userAnswer: 'C',               correctAnswer: 'C',               isCorrect: true,  timeSpentSec: 16 },
+    { id: 'ans-bob-L4Q32', attemptId: 'tsa-bob-listening', questionId: 'L4Q32', userAnswer: 'A', correctAnswer: 'B', isCorrect: false, timeSpentSec: 18 },
+    { id: 'ans-bob-L4Q33', attemptId: 'tsa-bob-listening', questionId: 'L4Q33', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 16 },
     { id: 'ans-bob-L4Q34', attemptId: 'tsa-bob-listening', questionId: 'L4Q34', userAnswer: 'philosophy and economics', correctAnswer: 'history and economics', isCorrect: false, timeSpentSec: 22 },
     { id: 'ans-bob-L4Q35', attemptId: 'tsa-bob-listening', questionId: 'L4Q35', userAnswer: 'meeting deadlines', correctAnswer: 'meeting deadlines (for essays)', isCorrect: true, timeSpentSec: 16 },
-    { id: 'ans-bob-L4Q36', attemptId: 'tsa-bob-listening', questionId: 'L4Q36', userAnswer: 'attendance',      correctAnswer: 'attendance',      isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-bob-L4Q37', attemptId: 'tsa-bob-listening', questionId: 'L4Q37', userAnswer: 'D',               correctAnswer: 'B',               isCorrect: false, timeSpentSec: 20 },
-    { id: 'ans-bob-L4Q38', attemptId: 'tsa-bob-listening', questionId: 'L4Q38', userAnswer: 'C',               correctAnswer: 'C',               isCorrect: true,  timeSpentSec: 16 },
-    { id: 'ans-bob-L4Q39', attemptId: 'tsa-bob-listening', questionId: 'L4Q39', userAnswer: 'B',               correctAnswer: 'B',               isCorrect: true,  timeSpentSec: 14 },
-    { id: 'ans-bob-L4Q40', attemptId: 'tsa-bob-listening', questionId: 'L4Q40', userAnswer: 'D',               correctAnswer: 'D',               isCorrect: true,  timeSpentSec: 12 },
-    { id: 'ans-bob-L4Q41', attemptId: 'tsa-bob-listening', questionId: 'L4Q41', userAnswer: 'C',               correctAnswer: 'A',               isCorrect: false, timeSpentSec: 18 },
+    { id: 'ans-bob-L4Q36', attemptId: 'tsa-bob-listening', questionId: 'L4Q36', userAnswer: 'attendance', correctAnswer: 'attendance', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-bob-L4Q37', attemptId: 'tsa-bob-listening', questionId: 'L4Q37', userAnswer: 'D', correctAnswer: 'B', isCorrect: false, timeSpentSec: 20 },
+    { id: 'ans-bob-L4Q38', attemptId: 'tsa-bob-listening', questionId: 'L4Q38', userAnswer: 'C', correctAnswer: 'C', isCorrect: true, timeSpentSec: 16 },
+    { id: 'ans-bob-L4Q39', attemptId: 'tsa-bob-listening', questionId: 'L4Q39', userAnswer: 'B', correctAnswer: 'B', isCorrect: true, timeSpentSec: 14 },
+    { id: 'ans-bob-L4Q40', attemptId: 'tsa-bob-listening', questionId: 'L4Q40', userAnswer: 'D', correctAnswer: 'D', isCorrect: true, timeSpentSec: 12 },
+    { id: 'ans-bob-L4Q41', attemptId: 'tsa-bob-listening', questionId: 'L4Q41', userAnswer: 'C', correctAnswer: 'A', isCorrect: false, timeSpentSec: 18 },
   ];
 
   await prisma.testAnswer.createMany({
@@ -747,6 +749,14 @@ async function main() {
     data: [...aliceListeningAnswers, ...aliceReadingAnswers, ...bobListeningAnswers],
   });
   console.log('✅ TestAnswers seeded');
+
+  // ============================================================
+  // MATERIALS SEEDING
+  // ============================================================
+  await seedVocab();
+  await seedGrammarSections();
+  await seedGrammarMistakes();
+
   console.log('');
   console.log('🎉 Done! Summary:');
   console.log('   • 1 PracticeTest  (Cambridge PT1)');
@@ -755,6 +765,203 @@ async function main() {
   console.log('   • 2 Tests         (1 completed, 1 in progress)');
   console.log('   • 7 SkillAttempts (Alice: 5 skills | Bob: 1 submitted + 1 pending)');
   console.log(`   • ${aliceListeningAnswers.length + aliceReadingAnswers.length + bobListeningAnswers.length} TestAnswers`);
+}
+
+// ─── Paths to FE static JSON files ────────────────────────────────────────────
+const FE_DATA = path.resolve(__dirname, '../../BandBuilder_FE/src/data');
+
+// ─── Helper ────────────────────────────────────────────────────────────────────
+function readJson<T>(filePath: string): T {
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as T;
+}
+
+// ─── 1. Seed Vocab ─────────────────────────────────────────────────────────────
+async function seedVocab() {
+  console.log('\n📚 Seeding Vocab Topics...');
+
+  const raw = readJson<{ topics: any[] }>(path.join(FE_DATA, 'vocab/vocab.data.json'));
+
+  let topicCount = 0;
+  let wordCount = 0;
+
+  for (const t of raw.topics) {
+    const topicName: string = t.topic;
+
+    // Detect type and bandLevel from topic name
+    let type: 'TOPIC' | 'BAND_LR' | 'BAND_SW' = 'TOPIC';
+    let bandLevel: number | null = null;
+
+    const lrMatch = topicName.match(/^LR_(\d+)$/);
+    const swMatch = topicName.match(/^SW_(\d+)$/);
+
+    if (lrMatch) {
+      type = 'BAND_LR';
+      bandLevel = parseInt(lrMatch[1], 10);
+    } else if (swMatch) {
+      type = 'BAND_SW';
+      bandLevel = parseInt(swMatch[1], 10);
+    }
+
+    // Upsert topic
+    const topic = await prisma.vocabTopic.upsert({
+      where: { name: topicName },
+      update: { type, bandLevel },
+      create: { name: topicName, type, bandLevel },
+    });
+
+    topicCount++;
+
+    // Seed words (skip if words already exist for this topic)
+    const existingCount = await prisma.vocabWord.count({ where: { topicId: topic.id } });
+    if (existingCount > 0) {
+      console.log(`  ↳ Topic "${topicName}": skipped (${existingCount} words already exist)`);
+      continue;
+    }
+
+    const vocabList: any[] = t.vocab_list ?? [];
+    for (const w of vocabList) {
+      const rawSynonyms: string = w.synonyms ?? '';
+      const synonymsArr = typeof rawSynonyms === 'string'
+        ? rawSynonyms.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : (Array.isArray(rawSynonyms) ? rawSynonyms : []);
+
+      await prisma.vocabWord.create({
+        data: {
+          topicId: topic.id,
+          word: w.word ?? '',
+          meaning: w.meaning ?? '',
+          pronunciation: w.pronunciation ?? null,
+          example: w.example ?? null,
+          synonyms: synonymsArr,
+        },
+      });
+      wordCount++;
+    }
+
+    console.log(`  ↳ Topic "${topicName}" [${type}]: ${vocabList.length} words inserted`);
+  }
+
+  console.log(`✅ Vocab done: ${topicCount} topics, ${wordCount} words`);
+}
+
+// ─── 2. Seed Grammar Sections ──────────────────────────────────────────────────
+async function seedGrammarSections() {
+  console.log('\n📖 Seeding Grammar Sections...');
+
+  // Files and their category + subCategory mapping
+  const files: { file: string; category: string; subCategory: string }[] = [
+    { file: 'basic.data.json', category: 'basics', subCategory: 'morphology' },
+    { file: 'tense.data.json', category: 'tenses', subCategory: 'tenses' },
+    { file: 'sentence.data.json', category: 'sentence', subCategory: 'sentence' },
+  ];
+
+  let total = 0;
+
+  for (const { file, category } of files) {
+    const raw = readJson<any>(path.join(FE_DATA, `grammar/${file}`));
+
+    if (file === 'basic.data.json') {
+      // Has tier_1_morphology, tier_2_syntax, tier_3_mechanics_phonetics
+      const tiers: { key: string; subCategory: string }[] = [
+        { key: 'tier_1_morphology', subCategory: 'morphology' },
+        { key: 'tier_2_syntax', subCategory: 'syntax' },
+        { key: 'tier_3_mechanics_phonetics', subCategory: 'mechanics' },
+      ];
+
+      for (const { key, subCategory } of tiers) {
+        const items: any[] = raw[key] ?? [];
+        let order = 0;
+        for (const item of items) {
+          const existing = await prisma.grammarSection.findFirst({
+            where: { category, subCategory, title: item.topic },
+          });
+          if (!existing) {
+            await prisma.grammarSection.create({
+              data: {
+                category,
+                subCategory,
+                title: item.topic,
+                ruleSummary: item.rule_summary ?? item.ruleSummary ?? '',
+                content: {
+                  ieltsStrategy: item.ielts_strategy ?? item.ieltsStrategy ?? '',
+                  practiceCases: item.practice_cases ?? item.practiceCases ?? [],
+                },
+                orderIndex: order++,
+              },
+            });
+            total++;
+          }
+        }
+        console.log(`  ↳ ${category}/${subCategory}: ${items.length} items`);
+      }
+    } else {
+      // tense.data.json and sentence.data.json have a top-level "data" array
+      const items: any[] = raw.data ?? [];
+      let order = 0;
+      for (const item of items) {
+        const subCat = item.subCategory ?? item.sub_category ?? category;
+        const existing = await prisma.grammarSection.findFirst({
+          where: { category, subCategory: subCat, title: item.title ?? item.topic },
+        });
+        if (!existing) {
+          await prisma.grammarSection.create({
+            data: {
+              category,
+              subCategory: subCat,
+              title: item.title ?? item.topic ?? '',
+              ruleSummary: item.ruleSummary ?? item.rule_summary ?? '',
+              content: {
+                ieltsStrategy: item.ieltsStrategy ?? item.ielts_strategy ?? '',
+                examples: item.examples ?? item.practice_cases ?? [],
+              },
+              orderIndex: order++,
+            },
+          });
+          total++;
+        }
+      }
+      console.log(`  ↳ ${category}: ${items.length} items`);
+    }
+  }
+
+  console.log(`✅ Grammar Sections done: ${total} sections inserted`);
+}
+
+// ─── 3. Seed Grammar Mistakes ──────────────────────────────────────────────────
+async function seedGrammarMistakes() {
+  console.log('\n⚠️  Seeding Grammar Mistakes...');
+
+  const raw = readJson<{ data: any[] }>(path.join(FE_DATA, 'grammar/mistake.data.json'));
+
+  let total = 0;
+
+  for (const group of raw.data) {
+    const category: string = group.category;
+    const mistakes: any[] = group.mistakes ?? [];
+
+    for (let i = 0; i < mistakes.length; i++) {
+      const m = mistakes[i];
+      const existing = await prisma.grammarMistake.findFirst({
+        where: { category, incorrect: m.incorrect },
+      });
+      if (!existing) {
+        await prisma.grammarMistake.create({
+          data: {
+            category,
+            incorrect: m.incorrect,
+            correct: m.correct,
+            note: m.note ?? '',
+            orderIndex: i,
+          },
+        });
+        total++;
+      }
+    }
+
+    console.log(`  ↳ "${category}": ${mistakes.length} mistakes`);
+  }
+
+  console.log(`✅ Grammar Mistakes done: ${total} mistakes inserted`);
 }
 
 main()
