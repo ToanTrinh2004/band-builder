@@ -1,6 +1,7 @@
-import { Controller, Post, Patch, Delete, Body, Param, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Patch, Delete, Body, Param, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { PracticePronunciationAdminService } from './practice-pronunciation-admin.service';
+import { extractYoutubeVideoId } from '../youtube/extract-youtube-id.util';
 import {
   CreatePronunciationTopicAdminDto,
   UpdatePronunciationTopicAdminDto,
@@ -15,6 +16,24 @@ import {
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 export class PracticePronunciationAdminController {
   constructor(private readonly adminService: PracticePronunciationAdminService) {}
+
+  @Post('scrape-transcript')
+  @ApiOperation({ summary: 'Scrape YouTube transcript from a URL in real-time' })
+  @ApiResponse({ status: 200, description: 'Transcript scraped successfully' })
+  async scrapeTranscript(@Body('videoUrl') videoUrl: string) {
+    if (!videoUrl) {
+      throw new BadRequestException('videoUrl is required');
+    }
+    const sentences = await this.adminService.scrapeTranscript(videoUrl);
+    const paragraph = sentences.map(s => s.text).join(' ');
+    const videoId = extractYoutubeVideoId(videoUrl);
+    const title = `YouTube Lesson: ${videoId ? videoId.toUpperCase() : 'New'}`;
+    return {
+      title,
+      paragraph,
+      sentences,
+    };
+  }
 
   // ── Topics CRUD ────────────────────────────────────────────────────────────
 
