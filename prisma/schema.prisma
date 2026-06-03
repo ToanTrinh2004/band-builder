@@ -476,3 +476,70 @@ model WritingSampleEssay {
 
   @@map("writing_sample_essays")
 }
+
+// ============================================================
+// MATERIALS — VOCABULARY
+// ============================================================
+
+enum VocabType {
+  TOPIC
+  BAND_LR
+  BAND_SW
+}
+
+model VocabTopic {
+  id         String     @id @default(uuid())
+  name       String     @unique     // e.g. "Technology", "LR_6", "SW_7"
+  type       VocabType  @default(TOPIC)
+  bandLevel  Int?       // 5|6|7|8  — only set when type = BAND_LR or BAND_SW
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  words VocabWord[]
+
+  @@map("vocab_topics")
+}
+
+model VocabWord {
+  id            String     @id @default(uuid())
+  topicId       String
+  word          String
+  meaning       String     @db.Text
+  pronunciation String?
+  example       String?    @db.Text
+  synonyms      String[]   // stored as array of strings
+
+  topic VocabTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@map("vocab_words")
+}
+
+// ============================================================
+// MATERIALS — GRAMMAR
+// ============================================================
+
+model GrammarSection {
+  id          String   @id @default(uuid())
+  category    String   // "basics" | "tenses" | "sentence"
+  subCategory String   // "morphology" | "syntax" | "mechanics" | "present" | "compound" ...
+  title       String
+  ruleSummary String   @db.Text
+  content     Json     // flexible: { practiceCases: [...], ieltsStrategy: "..." }
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("grammar_sections")
+}
+
+model GrammarMistake {
+  id         String   @id @default(uuid())
+  category   String   // e.g. "Subject-Verb Agreement", "Articles"
+  incorrect  String   @db.Text
+  correct    String   @db.Text
+  note       String   @db.Text
+  orderIndex Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@map("grammar_mistakes")
+}
