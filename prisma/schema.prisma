@@ -16,6 +16,7 @@ model User {
   email        String   @unique
   name         String?
   avatarUrl    String?
+  role         String   @default("STUDENT")
   refreshToken String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
