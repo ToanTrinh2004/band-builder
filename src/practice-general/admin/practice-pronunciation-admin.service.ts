@@ -20,6 +20,10 @@ export class PracticePronunciationAdminService {
     private readonly youtubeTranscriptService: YoutubeTranscriptService,
   ) { }
 
+  async scrapeTranscript(videoUrl: string) {
+    return this.youtubeTranscriptService.fetchTranscriptByUrl(videoUrl);
+  }
+
   // ── Pronunciation Topics CRUD ──────────────────────────────────────────────
 
   async createTopic(dto: CreatePronunciationTopicAdminDto) {
