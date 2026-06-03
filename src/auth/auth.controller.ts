@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthTokensDto } from './dto/auth-tokens.dto';
 import { MeResponseDto } from './dto/me-response.dto';
 import { JwtAuthGuard } from './guards/jwt.guard'; // your existing guard
+import { GoogleAuthGuard } from './guards/google.guard';
 import { CurrentUser } from './decorators/current-user.decorator'; // @Req().user shorthand
 
 const THROTTLE = { short: { ttl: 60000, limit: 5 } };
@@ -15,26 +16,54 @@ const THROTTLE = { short: { ttl: 60000, limit: 5 } };
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   // ─── Google OAuth ─────────────────────────────────────────────────────────
 
   @Throttle(THROTTLE)
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Initiate Google OAuth flow' })
   @ApiResponse({ status: 302, description: 'Redirects to Google login' })
-  async googleAuth() {}
+  async googleAuth() { }
 
   @Throttle(THROTTLE)
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback — sets auth cookies' })
   @ApiResponse({ status: 302, description: 'Redirects to frontend after login' })
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const data = await this.authService.validateGoogleUser(req.user as any);
 
-    this.authService.setAuthCookies(res, data); // ← reuse centralised helper
+    this.authService.setAuthCookies(res, data);
+
+    // Check if there is a mobileRedirect in the state query parameter
+    const stateStr = req.query.state as string;
+    let mobileRedirect: string | undefined;
+    if (stateStr) {
+      try {
+        const state = JSON.parse(stateStr);
+        mobileRedirect = state.mobileRedirect;
+      } catch (e) {
+        console.error('Error parsing OAuth state:', e);
+      }
+    }
+
+    if (mobileRedirect) {
+      try {
+        const redirectUrl = new URL(mobileRedirect);
+        redirectUrl.searchParams.set('token', data.accessToken);
+        redirectUrl.searchParams.set('refreshToken', data.refreshToken);
+        return res.redirect(redirectUrl.toString());
+      } catch (e) {
+        const separator = mobileRedirect.includes('?') ? '&' : '?';
+        return res.redirect(
+          `${mobileRedirect}${separator}token=${encodeURIComponent(
+            data.accessToken,
+          )}&refreshToken=${encodeURIComponent(data.refreshToken)}`,
+        );
+      }
+    }
 
     if (!process.env.FRONTEND_URL) {
       throw new Error('FRONTEND_URL is not defined');
@@ -54,7 +83,8 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthTokensDto> {
-    return this.authService.refreshTokens(req.cookies.refreshToken, res);
+    const token = req.cookies?.refreshToken || req.body?.refreshToken || req.headers.authorization?.replace('Bearer ', '');
+    return this.authService.refreshTokens(token, res);
   }
 
   // ─── Me ───────────────────────────────────────────────────────────────────
