@@ -448,13 +448,14 @@ enum WritingTaskType {
 }
 
 model WritingSampleTopic {
-  id        String          @id @default(uuid())
-  taskType  WritingTaskType // TASK_1 or TASK_2
-  category  String          // topic
-  prompt    String          @db.Text // paper
-  imageUrl  String?         
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id               String          @id @default(uuid())
+  taskType         WritingTaskType // TASK_1 or TASK_2
+  category         String          // topic
+  prompt           String          @db.Text // paper
+  imageUrl         String?
+  chartDescription String?         @db.Text // Mô tả/phân tích biểu đồ (Task 1)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   essays    WritingSampleEssay[]
 
