@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { PaymentController } from './payment.controller';
+import { AdminPaymentController } from './admin-payment.controller';
 import { PaymentService } from './payment.service';
 import { PrismaModule } from '../prisma/prisma.module'; // adjust path
 
 @Module({
   imports: [PrismaModule],
-  controllers: [PaymentController],
+  controllers: [PaymentController, AdminPaymentController],
   providers: [PaymentService],
   exports: [PaymentService],
 })
