@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { CreditTxStatus, CreditTransactionType } from '@prisma/client';
 import { InitiatePaymentDto, SePayWebhookDto } from './dto/payment.dto';
+import { CreateCreditPackageDto, UpdateCreditPackageDto } from './dto/admin-payment.dto';
 import { randomBytes } from 'crypto';
 
 // ─── VietQR public image endpoint — no API key required ─────
@@ -231,6 +232,55 @@ export class PaymentService {
     return this.prisma.creditPackage.findMany({
       where: { isActive: true },
       orderBy: { priceVnd: 'asc' },
+    });
+  }
+
+  async adminGetPackages() {
+    return this.prisma.creditPackage.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async adminCreatePackage(dto: CreateCreditPackageDto) {
+    return this.prisma.creditPackage.create({
+      data: dto,
+    });
+  }
+
+  async adminUpdatePackage(id: string, dto: UpdateCreditPackageDto) {
+    const pkg = await this.prisma.creditPackage.findUnique({
+      where: { id },
+    });
+    if (!pkg) {
+      throw new NotFoundException(`Gói nạp với ID ${id} không tồn tại`);
+    }
+
+    return this.prisma.creditPackage.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async adminDeletePackage(id: string) {
+    const pkg = await this.prisma.creditPackage.findUnique({
+      where: { id },
+    });
+    if (!pkg) {
+      throw new NotFoundException(`Gói nạp với ID ${id} không tồn tại`);
+    }
+
+    const count = await this.prisma.creditTransaction.count({
+      where: { packageId: id },
+    });
+
+    if (count > 0) {
+      throw new BadRequestException(
+        'Không thể xóa gói nạp này vì đã phát sinh lịch sử giao dịch. Vui lòng chuyển trạng thái sang "Tạm đóng" (isActive = false).'
+      );
+    }
+
+    return this.prisma.creditPackage.delete({
+      where: { id },
     });
   }
   // ──────────────────────────────────────────────────────────
