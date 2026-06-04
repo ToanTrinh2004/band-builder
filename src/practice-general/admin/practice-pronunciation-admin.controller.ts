@@ -24,10 +24,14 @@ export class PracticePronunciationAdminController {
     if (!videoUrl) {
       throw new BadRequestException('videoUrl is required');
     }
-    const sentences = await this.adminService.scrapeTranscript(videoUrl);
+    const [sentences, title] = await Promise.all([
+      this.adminService.scrapeTranscript(videoUrl),
+      this.adminService.getVideoTitle(videoUrl).catch(() => {
+        const videoId = extractYoutubeVideoId(videoUrl);
+        return `YouTube Lesson: ${videoId ? videoId.toUpperCase() : 'New'}`;
+      }),
+    ]);
     const paragraph = sentences.map(s => s.text).join(' ');
-    const videoId = extractYoutubeVideoId(videoUrl);
-    const title = `YouTube Lesson: ${videoId ? videoId.toUpperCase() : 'New'}`;
     return {
       title,
       paragraph,
