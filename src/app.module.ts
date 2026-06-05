@@ -15,6 +15,7 @@ import { UserModule } from './user/user.module';
 import { DictionaryModule } from './dictionary/dictionary.module';
 import { PracticeGeneralModule } from './practice-general/practice-general.module';
 import { MaterialsModule } from './materials/materials.module';
+import { SpeakingModule } from './speaking/speaking.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { MaterialsModule } from './materials/materials.module';
     DictionaryModule,
     PracticeGeneralModule,
     MaterialsModule,
+    SpeakingModule,
   ],
   controllers: [AppController],
   providers: [
