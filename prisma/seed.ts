@@ -60,24 +60,12 @@ async function main() {
             {
               type: 'bar_chart',
               label: 'Reasons for adults studying',
-              data_points: [
-                'Interest in subject',
-                'To gain qualifications',
-                'Helpful for current job',
-                'To improve prospects of promotion',
-                'Enjoy learning/studying',
-                'To be able to change jobs',
-                'To meet people',
-              ],
+              imageUrl: 'https://res.cloudinary.com/ddne6zhdf/image/upload/v1733471017/images/wt1-chart-example.png',
             },
             {
               type: 'pie_chart',
               label: 'How course costs should be shared',
-              data_points: [
-                { label: 'Individual', value: '40%' },
-                { label: 'Employer', value: '35%' },
-                { label: 'Taxpayer', value: '25%' },
-              ],
+              imageUrl: 'https://res.cloudinary.com/ddne6zhdf/image/upload/v1733471017/images/wt1-chart-example.png',
             },
           ],
           prompt:
