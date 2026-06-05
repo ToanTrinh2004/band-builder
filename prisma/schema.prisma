@@ -450,6 +450,7 @@ enum WritingTaskType {
 
 model WritingSampleTopic {
   id               String          @id @default(uuid())
+  title            String          @default("")
   taskType         WritingTaskType // TASK_1 or TASK_2
   category         String          // topic
   prompt           String          @db.Text // paper

@@ -21,6 +21,7 @@ export class WritingSampleAdminService {
     return this.prisma.writingSampleTopic.create({
       data: {
         taskType: dto.taskType,
+        title: dto.title,
         category: dto.category,
         prompt: dto.prompt,
         imageUrl: dto.imageUrl ?? null,
@@ -43,6 +44,7 @@ export class WritingSampleAdminService {
       where: { id },
       data: {
         taskType: dto.taskType,
+        title: dto.title,
         category: dto.category,
         prompt: dto.prompt,
         imageUrl: dto.imageUrl !== undefined ? dto.imageUrl : undefined,

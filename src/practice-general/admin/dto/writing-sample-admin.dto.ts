@@ -21,6 +21,11 @@ export class CreateWritingSampleTopicDto {
   @IsNotEmpty()
   taskType!: WritingTaskType;
 
+  @ApiProperty({ description: 'The title of the writing topic' })
+  @IsString()
+  @IsNotEmpty()
+  title!: string;
+
   @ApiProperty({ description: 'Category of the writing topic (e.g. Technology, Education)' })
   @IsString()
   @IsNotEmpty()

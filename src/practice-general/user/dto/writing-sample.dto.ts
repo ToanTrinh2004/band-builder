@@ -52,6 +52,7 @@ export class WritingSampleEssayResponseDto {
 
 export class WritingSampleTopicListItemResponseDto {
   @ApiProperty() id!: string;
+  @ApiProperty() title!: string;
   @ApiProperty({ enum: ['TASK_1', 'TASK_2'] }) taskType!: 'TASK_1' | 'TASK_2';
   @ApiProperty() category!: string;
   @ApiProperty() prompt!: string;
@@ -66,6 +67,7 @@ export class WritingSampleTopicListItemResponseDto {
 
 export class WritingSampleTopicDetailResponseDto {
   @ApiProperty() id!: string;
+  @ApiProperty() title!: string;
   @ApiProperty({ enum: ['TASK_1', 'TASK_2'] }) taskType!: 'TASK_1' | 'TASK_2';
   @ApiProperty() category!: string;
   @ApiProperty() prompt!: string;
