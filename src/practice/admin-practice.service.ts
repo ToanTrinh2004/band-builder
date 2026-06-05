@@ -167,7 +167,11 @@ export class AdminPracticeService {
       include: {
         practiceTestSkills: {
           include: {
-            skillTest: true,
+            skillTest: {
+              include: {
+                skillContent: true,
+              },
+            },
           },
         },
       },
@@ -177,12 +181,38 @@ export class AdminPracticeService {
       throw new NotFoundException(`Practice test với ID ${practiceTestId} không tồn tại`);
     }
 
-    const hasSkillType = test.practiceTestSkills.some(
-      pts => pts.skillTest.skillTypeId === dto.skillTypeId
-    );
+    if (dto.skillTypeId === 3) {
+      const existingWritingSkills = test.practiceTestSkills.filter(
+        pts => pts.skillTest.skillTypeId === 3
+      );
 
-    if (hasSkillType) {
-      throw new ConflictException(`Đề thi này đã chứa phần thi của kỹ năng có ID ${dto.skillTypeId}`);
+      if (existingWritingSkills.length >= 2) {
+        throw new ConflictException('Đề thi này đã chứa tối đa 2 phần thi Writing (Task 1 và Task 2)');
+      }
+
+      if (existingWritingSkills.length === 1) {
+        const newTaskNumber = dto.contentJson && typeof dto.contentJson === 'object'
+          ? (dto.contentJson as any).task
+          : undefined;
+
+        const existingSkill = existingWritingSkills[0].skillTest;
+        const existingContentJson = existingSkill.skillContent.contentJson;
+        const existingTaskNumber = existingContentJson && typeof existingContentJson === 'object'
+          ? (existingContentJson as any).task
+          : undefined;
+
+        if (newTaskNumber !== undefined && existingTaskNumber === newTaskNumber) {
+          throw new ConflictException(`Đề thi này đã chứa phần thi Writing Task ${newTaskNumber}`);
+        }
+      }
+    } else {
+      const hasSkillType = test.practiceTestSkills.some(
+        pts => pts.skillTest.skillTypeId === dto.skillTypeId
+      );
+
+      if (hasSkillType) {
+        throw new ConflictException(`Đề thi này đã chứa phần thi của kỹ năng có ID ${dto.skillTypeId}`);
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {

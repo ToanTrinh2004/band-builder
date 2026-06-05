@@ -995,6 +995,7 @@ Return the JSON score object only.`,
       questions.map(({ answer: _answer, ...rest }) => rest);
 
     return {
+      ...content,
       sections: content.sections?.map((section) => ({
         ...section,
         question_blocks: section.question_blocks.map((block) => ({
