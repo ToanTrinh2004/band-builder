@@ -21,11 +21,11 @@ import {
   PaginationQueryDto,
 } from './dto/practice.dto';
 import { IELTSScore } from './types/writing.type';
-import { IELTS_SYSTEM_PROMPT } from './types/writing.promt'; 
+import { IELTS_SYSTEM_PROMPT } from './types/writing.promt';
 
 @Injectable()
 export class PracticeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ================================================================
   // TEST SESSION
@@ -62,9 +62,9 @@ export class PracticeService {
         });
 
         return {
-          testId:       test.id,
-          status:       test.status,
-          startedAt:    test.startedAt,
+          testId: test.id,
+          status: test.status,
+          startedAt: test.startedAt,
           practiceTest: test.practiceTest.title,
         };
       });
@@ -116,7 +116,7 @@ export class PracticeService {
       }
       // already started but not submitted — return it as-is (idempotent)
       return {
-        message:   'Skill attempt already started',
+        message: 'Skill attempt already started',
         attemptId: existingAttempt.id,
         skillType,
         startedAt: existingAttempt.createdAt,
@@ -127,22 +127,22 @@ export class PracticeService {
       const attempt = await this.prisma.$transaction(async (tx) => {
         await tx.skillTest.update({
           where: { id: skillTestId },
-          data:  { numberOfVisits: { increment: 1 } },
+          data: { numberOfVisits: { increment: 1 } },
         });
 
         return tx.testSkillAttempt.create({
-          data:   { testId, skillTestId },
+          data: { testId, skillTestId },
           select: { id: true, createdAt: true },
         });
       });
 
       return {
-        message:        'Skill attempt started',
-        attemptId:      attempt.id,
+        message: 'Skill attempt started',
+        attemptId: attempt.id,
         skillType,
         skillTestId,
         skillContentId: matchedSkill.skillTest.skillContentId,
-        startedAt:      attempt.createdAt,
+        startedAt: attempt.createdAt,
       };
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -197,7 +197,7 @@ export class PracticeService {
       throw new BadRequestException('Duplicate questionIds in answers');
     }
 
-    const isAutoScored    = AUTO_SCORED_SKILLS.includes(skillType);
+    const isAutoScored = AUTO_SCORED_SKILLS.includes(skillType);
     const correctAnswerMap = isAutoScored
       ? this.extractCorrectAnswers(skillTest.skillContent.contentJson as ContentJson)
       : new Map<string, string>();
@@ -206,7 +206,7 @@ export class PracticeService {
     const totalGradeable = correctAnswerMap.size;
 
     const answerRows = dto.answers.map((a) => {
-      const correct   = correctAnswerMap.get(a.questionId) ?? null;
+      const correct = correctAnswerMap.get(a.questionId) ?? null;
       const isCorrect = isAutoScored && correct !== null
         ? this.checkAnswer(a.userAnswer ?? '', correct)
         : null;
@@ -214,17 +214,17 @@ export class PracticeService {
       if (isCorrect) correctCount++;
 
       return {
-        attemptId:     attempt.id,
-        questionId:    a.questionId,
-        userAnswer:    a.userAnswer ?? null,
+        attemptId: attempt.id,
+        questionId: a.questionId,
+        userAnswer: a.userAnswer ?? null,
         correctAnswer: correct,
         isCorrect,
-        timeSpentSec:  null as number | null,
+        timeSpentSec: null as number | null,
       };
     });
 
-    const score     = isAutoScored ? correctCount : null;
-    const maxScore  = isAutoScored ? totalGradeable : null;
+    const score = isAutoScored ? correctCount : null;
+    const maxScore = isAutoScored ? totalGradeable : null;
     const bandScore = isAutoScored && maxScore
       ? this.ieltsListeningReadingBand(correctCount, maxScore)
       : null;
@@ -243,7 +243,7 @@ export class PracticeService {
             maxScore,
             bandScore,
             timeSpentSec: dto.timeSpentSec,
-            submittedAt:  new Date(),
+            submittedAt: new Date(),
           },
         });
 
@@ -255,13 +255,13 @@ export class PracticeService {
     }
 
     return {
-      message:        `${skillType} submitted successfully`,
+      message: `${skillType} submitted successfully`,
       skillType,
       score,
       maxScore,
       bandScore,
-      timeSpentSec:   dto.timeSpentSec,
-      correctCount:   isAutoScored ? correctCount : undefined,
+      timeSpentSec: dto.timeSpentSec,
+      correctCount: isAutoScored ? correctCount : undefined,
       totalQuestions: isAutoScored ? totalGradeable : undefined,
     };
   }
@@ -270,7 +270,7 @@ export class PracticeService {
   // WRITING — Claude AI evaluation
   // ================================================================
 
- 
+
   async submitWritingTask(
     testId: string,
     taskNumber: 1 | 2,
@@ -291,16 +291,16 @@ export class PracticeService {
         },
       },
     });
-  
+
     if (!test) throw new NotFoundException('Test not found');
     if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
     if (test.status !== 'IN_PROGRESS') throw new BadRequestException(`Test is already ${test.status}`);
-  
+
     const writingSkill = test.practiceTest.practiceTestSkills.find(
       (pts) => pts.skillTest.skillTypeId === SKILL_TYPE_MAP['writing'],
     );
     if (!writingSkill) throw new NotFoundException('No writing skill found in this test');
-  
+
     const attempt = await this.prisma.testSkillAttempt.findUnique({
       where: { testId_skillTestId: { testId, skillTestId: writingSkill.skillTest.id } },
     });
@@ -309,11 +309,11 @@ export class PracticeService {
         `Start the writing attempt first: POST /practice/tests/${testId}/skills/writing/start`,
       );
     }
-  
+
     const questionId = `task${taskNumber}`;
     const essay = dto.answers.find((a) => a.questionId === questionId)?.userAnswer?.trim();
     if (!essay) throw new BadRequestException(`Essay is missing (questionId: "${questionId}")`);
-  
+
     const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
     const words = wordCount(essay);
     const minWords = taskNumber === 1 ? 100 : 200;
@@ -322,15 +322,15 @@ export class PracticeService {
         `Task ${taskNumber} too short — ${words} words, need at least ${minWords}`,
       );
     }
-  
+
     const existing = await this.prisma.testAnswer.findFirst({
       where: { attemptId: attempt.id, questionId },
     });
     if (existing) throw new ConflictException(`Task ${taskNumber} has already been submitted`);
-  
+
     const content = writingSkill.skillTest.skillContent.contentJson as any;
     const question = content?.[questionId]?.question ?? '';
-  
+
     let taskScore: IELTSScore;
     try {
       taskScore = await this.evaluateWithClaude(
@@ -341,241 +341,241 @@ export class PracticeService {
     } catch {
       throw new InternalServerErrorException('Claude evaluation failed — please try again');
     }
-  
+
     try {
       await this.prisma.$transaction(async (tx) => {
         // store raw essay
         await tx.testAnswer.create({
           data: {
-            attemptId:     attempt.id,
+            attemptId: attempt.id,
             questionId,
-            userAnswer:    essay,
-            isCorrect:     null,
+            userAnswer: essay,
+            isCorrect: null,
             correctAnswer: null,
           },
         });
-  
+
         if (taskNumber === 1) {
           const t1 = taskScore.criteria;
-  
+
           await tx.writingEvaluation.upsert({
             where: { attemptId: attempt.id },
             create: {
-              attemptId:   attempt.id,
+              attemptId: attempt.id,
               overallBand: 0,
-  
-              task1Band:                         taskScore.overall_band,
-              task1TaskAchievement:              t1.task_achievement!.score,
-              task1TaskAchievementRationale:     t1.task_achievement!.rationale,
-              task1TaskAchievementExamples:      t1.task_achievement!.examples,
-              task1TaskAchievementSuggestions:   t1.task_achievement!.suggestions,
-              task1CoherenceCohesion:            t1.coherence_and_cohesion.score,
-              task1CoherenceCohesionRationale:   t1.coherence_and_cohesion.rationale,
-              task1CoherenceCohesionExamples:    t1.coherence_and_cohesion.examples,
+
+              task1Band: taskScore.overall_band,
+              task1TaskAchievement: t1.task_achievement!.score,
+              task1TaskAchievementRationale: t1.task_achievement!.rationale,
+              task1TaskAchievementExamples: t1.task_achievement!.examples,
+              task1TaskAchievementSuggestions: t1.task_achievement!.suggestions,
+              task1CoherenceCohesion: t1.coherence_and_cohesion.score,
+              task1CoherenceCohesionRationale: t1.coherence_and_cohesion.rationale,
+              task1CoherenceCohesionExamples: t1.coherence_and_cohesion.examples,
               task1CoherenceCohesionSuggestions: t1.coherence_and_cohesion.suggestions,
-              task1LexicalResource:              t1.lexical_resource.score,
-              task1LexicalResourceRationale:     t1.lexical_resource.rationale,
-              task1LexicalResourceExamples:      t1.lexical_resource.examples,
-              task1LexicalResourceSuggestions:   t1.lexical_resource.suggestions,
-              task1GrammaticalRange:             t1.grammatical_range_and_accuracy.score,
-              task1GrammaticalRangeRationale:    t1.grammatical_range_and_accuracy.rationale,
-              task1GrammaticalRangeExamples:     t1.grammatical_range_and_accuracy.examples,
-              task1GrammaticalRangeSuggestions:  t1.grammatical_range_and_accuracy.suggestions,
-              task1ImageFeedback:                taskScore.image_feedback ?? Prisma.JsonNull,
-              task1OverallFeedback:              taskScore.overall_feedback,
-              task1KeyStrengths:                 taskScore.key_strengths,
-              task1KeyWeaknesses:                taskScore.key_weaknesses,
-              task1PriorityImprovements:         taskScore.priority_improvements,
-              task1Essay:                        essay,
-              task1WordCount:                    words,
-  
+              task1LexicalResource: t1.lexical_resource.score,
+              task1LexicalResourceRationale: t1.lexical_resource.rationale,
+              task1LexicalResourceExamples: t1.lexical_resource.examples,
+              task1LexicalResourceSuggestions: t1.lexical_resource.suggestions,
+              task1GrammaticalRange: t1.grammatical_range_and_accuracy.score,
+              task1GrammaticalRangeRationale: t1.grammatical_range_and_accuracy.rationale,
+              task1GrammaticalRangeExamples: t1.grammatical_range_and_accuracy.examples,
+              task1GrammaticalRangeSuggestions: t1.grammatical_range_and_accuracy.suggestions,
+              task1ImageFeedback: taskScore.image_feedback ?? Prisma.JsonNull,
+              task1OverallFeedback: taskScore.overall_feedback,
+              task1KeyStrengths: taskScore.key_strengths,
+              task1KeyWeaknesses: taskScore.key_weaknesses,
+              task1PriorityImprovements: taskScore.priority_improvements,
+              task1Essay: essay,
+              task1WordCount: words,
+
               // task2 placeholders
-              task2Band:                         0,
-              task2TaskResponse:                 0,
-              task2TaskResponseRationale:        '',
-              task2TaskResponseExamples:         '',
-              task2TaskResponseSuggestions:      '',
-              task2CoherenceCohesion:            0,
-              task2CoherenceCohesionRationale:   '',
-              task2CoherenceCohesionExamples:    '',
+              task2Band: 0,
+              task2TaskResponse: 0,
+              task2TaskResponseRationale: '',
+              task2TaskResponseExamples: '',
+              task2TaskResponseSuggestions: '',
+              task2CoherenceCohesion: 0,
+              task2CoherenceCohesionRationale: '',
+              task2CoherenceCohesionExamples: '',
               task2CoherenceCohesionSuggestions: '',
-              task2LexicalResource:              0,
-              task2LexicalResourceRationale:     '',
-              task2LexicalResourceExamples:      '',
-              task2LexicalResourceSuggestions:   '',
-              task2GrammaticalRange:             0,
-              task2GrammaticalRangeRationale:    '',
-              task2GrammaticalRangeExamples:     '',
-              task2GrammaticalRangeSuggestions:  '',
-              task2OverallFeedback:              '',
-              task2KeyStrengths:                 [],
-              task2KeyWeaknesses:                [],
-              task2PriorityImprovements:         [],
-              task2Essay:                        '',
-              task2WordCount:                    0,
+              task2LexicalResource: 0,
+              task2LexicalResourceRationale: '',
+              task2LexicalResourceExamples: '',
+              task2LexicalResourceSuggestions: '',
+              task2GrammaticalRange: 0,
+              task2GrammaticalRangeRationale: '',
+              task2GrammaticalRangeExamples: '',
+              task2GrammaticalRangeSuggestions: '',
+              task2OverallFeedback: '',
+              task2KeyStrengths: [],
+              task2KeyWeaknesses: [],
+              task2PriorityImprovements: [],
+              task2Essay: '',
+              task2WordCount: 0,
             },
             update: {
               // task1 already saved — patch only task1 fields in case of retry
-              task1Band:                         taskScore.overall_band,
-              task1TaskAchievement:              t1.task_achievement!.score,
-              task1TaskAchievementRationale:     t1.task_achievement!.rationale,
-              task1TaskAchievementExamples:      t1.task_achievement!.examples,
-              task1TaskAchievementSuggestions:   t1.task_achievement!.suggestions,
-              task1CoherenceCohesion:            t1.coherence_and_cohesion.score,
-              task1CoherenceCohesionRationale:   t1.coherence_and_cohesion.rationale,
-              task1CoherenceCohesionExamples:    t1.coherence_and_cohesion.examples,
+              task1Band: taskScore.overall_band,
+              task1TaskAchievement: t1.task_achievement!.score,
+              task1TaskAchievementRationale: t1.task_achievement!.rationale,
+              task1TaskAchievementExamples: t1.task_achievement!.examples,
+              task1TaskAchievementSuggestions: t1.task_achievement!.suggestions,
+              task1CoherenceCohesion: t1.coherence_and_cohesion.score,
+              task1CoherenceCohesionRationale: t1.coherence_and_cohesion.rationale,
+              task1CoherenceCohesionExamples: t1.coherence_and_cohesion.examples,
               task1CoherenceCohesionSuggestions: t1.coherence_and_cohesion.suggestions,
-              task1LexicalResource:              t1.lexical_resource.score,
-              task1LexicalResourceRationale:     t1.lexical_resource.rationale,
-              task1LexicalResourceExamples:      t1.lexical_resource.examples,
-              task1LexicalResourceSuggestions:   t1.lexical_resource.suggestions,
-              task1GrammaticalRange:             t1.grammatical_range_and_accuracy.score,
-              task1GrammaticalRangeRationale:    t1.grammatical_range_and_accuracy.rationale,
-              task1GrammaticalRangeExamples:     t1.grammatical_range_and_accuracy.examples,
-              task1GrammaticalRangeSuggestions:  t1.grammatical_range_and_accuracy.suggestions,
-              task1ImageFeedback:                taskScore.image_feedback ?? Prisma.JsonNull,
-              task1OverallFeedback:              taskScore.overall_feedback,
-              task1KeyStrengths:                 taskScore.key_strengths,
-              task1KeyWeaknesses:                taskScore.key_weaknesses,
-              task1PriorityImprovements:         taskScore.priority_improvements,
-              task1Essay:                        essay,
-              task1WordCount:                    words,
+              task1LexicalResource: t1.lexical_resource.score,
+              task1LexicalResourceRationale: t1.lexical_resource.rationale,
+              task1LexicalResourceExamples: t1.lexical_resource.examples,
+              task1LexicalResourceSuggestions: t1.lexical_resource.suggestions,
+              task1GrammaticalRange: t1.grammatical_range_and_accuracy.score,
+              task1GrammaticalRangeRationale: t1.grammatical_range_and_accuracy.rationale,
+              task1GrammaticalRangeExamples: t1.grammatical_range_and_accuracy.examples,
+              task1GrammaticalRangeSuggestions: t1.grammatical_range_and_accuracy.suggestions,
+              task1ImageFeedback: taskScore.image_feedback ?? Prisma.JsonNull,
+              task1OverallFeedback: taskScore.overall_feedback,
+              task1KeyStrengths: taskScore.key_strengths,
+              task1KeyWeaknesses: taskScore.key_weaknesses,
+              task1PriorityImprovements: taskScore.priority_improvements,
+              task1Essay: essay,
+              task1WordCount: words,
             },
           });
-  
+
           // task2 was submitted first — compute overall now that we have both
           const evalRow = await tx.writingEvaluation.findUnique({
             where: { attemptId: attempt.id },
           });
-  
+
           if (evalRow?.task2Band) {
             const overallBand =
               Math.round((taskScore.overall_band / 3 + (evalRow.task2Band * 2) / 3) * 2) / 2;
-  
+
             await tx.writingEvaluation.update({
               where: { attemptId: attempt.id },
               data: { overallBand },
             });
-  
+
             await tx.testSkillAttempt.update({
               where: { id: attempt.id },
               data: {
-                bandScore:    overallBand,
+                bandScore: overallBand,
                 timeSpentSec: dto.timeSpentSec ?? null,
-                submittedAt:  new Date(),
+                submittedAt: new Date(),
               },
             });
-  
+
             await this.maybeCompleteTest(testId, tx);
           }
         } else {
           // task2 branch
           const t2 = taskScore.criteria;
-  
+
           const evalRow = await tx.writingEvaluation.findUnique({
             where: { attemptId: attempt.id },
           });
-  
-          const task1Band  = evalRow?.task1Band ?? 0;
-          const bothDone   = !!evalRow?.task1Band;
+
+          const task1Band = evalRow?.task1Band ?? 0;
+          const bothDone = !!evalRow?.task1Band;
           const overallBand = bothDone
             ? Math.round((task1Band / 3 + (taskScore.overall_band * 2) / 3) * 2) / 2
             : taskScore.overall_band; // placeholder until task1 arrives
-  
+
           await tx.writingEvaluation.upsert({
             where: { attemptId: attempt.id },
             create: {
-              attemptId:   attempt.id,
+              attemptId: attempt.id,
               overallBand,
-  
+
               // task1 placeholders
-              task1Band:                         0,
-              task1TaskAchievement:              0,
-              task1TaskAchievementRationale:     '',
-              task1TaskAchievementExamples:      '',
-              task1TaskAchievementSuggestions:   '',
-              task1CoherenceCohesion:            0,
-              task1CoherenceCohesionRationale:   '',
-              task1CoherenceCohesionExamples:    '',
+              task1Band: 0,
+              task1TaskAchievement: 0,
+              task1TaskAchievementRationale: '',
+              task1TaskAchievementExamples: '',
+              task1TaskAchievementSuggestions: '',
+              task1CoherenceCohesion: 0,
+              task1CoherenceCohesionRationale: '',
+              task1CoherenceCohesionExamples: '',
               task1CoherenceCohesionSuggestions: '',
-              task1LexicalResource:              0,
-              task1LexicalResourceRationale:     '',
-              task1LexicalResourceExamples:      '',
-              task1LexicalResourceSuggestions:   '',
-              task1GrammaticalRange:             0,
-              task1GrammaticalRangeRationale:    '',
-              task1GrammaticalRangeExamples:     '',
-              task1GrammaticalRangeSuggestions:  '',
-              task1ImageFeedback:                Prisma.JsonNull,
-              task1OverallFeedback:              '',
-              task1KeyStrengths:                 [],
-              task1KeyWeaknesses:                [],
-              task1PriorityImprovements:         [],
-              task1Essay:                        '',
-              task1WordCount:                    0,
-  
-              task2Band:                         taskScore.overall_band,
-              task2TaskResponse:                 t2.task_response!.score,
-              task2TaskResponseRationale:        t2.task_response!.rationale,
-              task2TaskResponseExamples:         t2.task_response!.examples,
-              task2TaskResponseSuggestions:      t2.task_response!.suggestions,
-              task2CoherenceCohesion:            t2.coherence_and_cohesion.score,
-              task2CoherenceCohesionRationale:   t2.coherence_and_cohesion.rationale,
-              task2CoherenceCohesionExamples:    t2.coherence_and_cohesion.examples,
+              task1LexicalResource: 0,
+              task1LexicalResourceRationale: '',
+              task1LexicalResourceExamples: '',
+              task1LexicalResourceSuggestions: '',
+              task1GrammaticalRange: 0,
+              task1GrammaticalRangeRationale: '',
+              task1GrammaticalRangeExamples: '',
+              task1GrammaticalRangeSuggestions: '',
+              task1ImageFeedback: Prisma.JsonNull,
+              task1OverallFeedback: '',
+              task1KeyStrengths: [],
+              task1KeyWeaknesses: [],
+              task1PriorityImprovements: [],
+              task1Essay: '',
+              task1WordCount: 0,
+
+              task2Band: taskScore.overall_band,
+              task2TaskResponse: t2.task_response!.score,
+              task2TaskResponseRationale: t2.task_response!.rationale,
+              task2TaskResponseExamples: t2.task_response!.examples,
+              task2TaskResponseSuggestions: t2.task_response!.suggestions,
+              task2CoherenceCohesion: t2.coherence_and_cohesion.score,
+              task2CoherenceCohesionRationale: t2.coherence_and_cohesion.rationale,
+              task2CoherenceCohesionExamples: t2.coherence_and_cohesion.examples,
               task2CoherenceCohesionSuggestions: t2.coherence_and_cohesion.suggestions,
-              task2LexicalResource:              t2.lexical_resource.score,
-              task2LexicalResourceRationale:     t2.lexical_resource.rationale,
-              task2LexicalResourceExamples:      t2.lexical_resource.examples,
-              task2LexicalResourceSuggestions:   t2.lexical_resource.suggestions,
-              task2GrammaticalRange:             t2.grammatical_range_and_accuracy.score,
-              task2GrammaticalRangeRationale:    t2.grammatical_range_and_accuracy.rationale,
-              task2GrammaticalRangeExamples:     t2.grammatical_range_and_accuracy.examples,
-              task2GrammaticalRangeSuggestions:  t2.grammatical_range_and_accuracy.suggestions,
-              task2OverallFeedback:              taskScore.overall_feedback,
-              task2KeyStrengths:                 taskScore.key_strengths,
-              task2KeyWeaknesses:                taskScore.key_weaknesses,
-              task2PriorityImprovements:         taskScore.priority_improvements,
-              task2Essay:                        essay,
-              task2WordCount:                    words,
+              task2LexicalResource: t2.lexical_resource.score,
+              task2LexicalResourceRationale: t2.lexical_resource.rationale,
+              task2LexicalResourceExamples: t2.lexical_resource.examples,
+              task2LexicalResourceSuggestions: t2.lexical_resource.suggestions,
+              task2GrammaticalRange: t2.grammatical_range_and_accuracy.score,
+              task2GrammaticalRangeRationale: t2.grammatical_range_and_accuracy.rationale,
+              task2GrammaticalRangeExamples: t2.grammatical_range_and_accuracy.examples,
+              task2GrammaticalRangeSuggestions: t2.grammatical_range_and_accuracy.suggestions,
+              task2OverallFeedback: taskScore.overall_feedback,
+              task2KeyStrengths: taskScore.key_strengths,
+              task2KeyWeaknesses: taskScore.key_weaknesses,
+              task2PriorityImprovements: taskScore.priority_improvements,
+              task2Essay: essay,
+              task2WordCount: words,
             },
             update: {
               overallBand,
-              task2Band:                         taskScore.overall_band,
-              task2TaskResponse:                 t2.task_response!.score,
-              task2TaskResponseRationale:        t2.task_response!.rationale,
-              task2TaskResponseExamples:         t2.task_response!.examples,
-              task2TaskResponseSuggestions:      t2.task_response!.suggestions,
-              task2CoherenceCohesion:            t2.coherence_and_cohesion.score,
-              task2CoherenceCohesionRationale:   t2.coherence_and_cohesion.rationale,
-              task2CoherenceCohesionExamples:    t2.coherence_and_cohesion.examples,
+              task2Band: taskScore.overall_band,
+              task2TaskResponse: t2.task_response!.score,
+              task2TaskResponseRationale: t2.task_response!.rationale,
+              task2TaskResponseExamples: t2.task_response!.examples,
+              task2TaskResponseSuggestions: t2.task_response!.suggestions,
+              task2CoherenceCohesion: t2.coherence_and_cohesion.score,
+              task2CoherenceCohesionRationale: t2.coherence_and_cohesion.rationale,
+              task2CoherenceCohesionExamples: t2.coherence_and_cohesion.examples,
               task2CoherenceCohesionSuggestions: t2.coherence_and_cohesion.suggestions,
-              task2LexicalResource:              t2.lexical_resource.score,
-              task2LexicalResourceRationale:     t2.lexical_resource.rationale,
-              task2LexicalResourceExamples:      t2.lexical_resource.examples,
-              task2LexicalResourceSuggestions:   t2.lexical_resource.suggestions,
-              task2GrammaticalRange:             t2.grammatical_range_and_accuracy.score,
-              task2GrammaticalRangeRationale:    t2.grammatical_range_and_accuracy.rationale,
-              task2GrammaticalRangeExamples:     t2.grammatical_range_and_accuracy.examples,
-              task2GrammaticalRangeSuggestions:  t2.grammatical_range_and_accuracy.suggestions,
-              task2OverallFeedback:              taskScore.overall_feedback,
-              task2KeyStrengths:                 taskScore.key_strengths,
-              task2KeyWeaknesses:                taskScore.key_weaknesses,
-              task2PriorityImprovements:         taskScore.priority_improvements,
-              task2Essay:                        essay,
-              task2WordCount:                    words,
+              task2LexicalResource: t2.lexical_resource.score,
+              task2LexicalResourceRationale: t2.lexical_resource.rationale,
+              task2LexicalResourceExamples: t2.lexical_resource.examples,
+              task2LexicalResourceSuggestions: t2.lexical_resource.suggestions,
+              task2GrammaticalRange: t2.grammatical_range_and_accuracy.score,
+              task2GrammaticalRangeRationale: t2.grammatical_range_and_accuracy.rationale,
+              task2GrammaticalRangeExamples: t2.grammatical_range_and_accuracy.examples,
+              task2GrammaticalRangeSuggestions: t2.grammatical_range_and_accuracy.suggestions,
+              task2OverallFeedback: taskScore.overall_feedback,
+              task2KeyStrengths: taskScore.key_strengths,
+              task2KeyWeaknesses: taskScore.key_weaknesses,
+              task2PriorityImprovements: taskScore.priority_improvements,
+              task2Essay: essay,
+              task2WordCount: words,
             },
           });
-  
+
           if (bothDone) {
             await tx.testSkillAttempt.update({
               where: { id: attempt.id },
               data: {
-                bandScore:    overallBand,
+                bandScore: overallBand,
                 timeSpentSec: dto.timeSpentSec ?? null,
-                submittedAt:  new Date(),
+                submittedAt: new Date(),
               },
             });
-  
+
             await this.maybeCompleteTest(testId, tx);
           }
         }
@@ -584,21 +584,21 @@ export class PracticeService {
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to save writing results');
     }
-  
+
     return {
-      status:     'success',
-      task_type:  `writing_task${taskNumber}`,
+      status: 'success',
+      task_type: `writing_task${taskNumber}`,
       word_count: words,
-      scored_at:  new Date().toISOString(),
+      scored_at: new Date().toISOString(),
       result: {
-        band:                  taskScore.overall_band,
-        criteria:              taskScore.criteria,
+        band: taskScore.overall_band,
+        criteria: taskScore.criteria,
         ...(taskNumber === 1 && taskScore.image_feedback
           ? { image_feedback: taskScore.image_feedback }
           : {}),
-        overall_feedback:      taskScore.overall_feedback,
-        key_strengths:         taskScore.key_strengths,
-        key_weaknesses:        taskScore.key_weaknesses,
+        overall_feedback: taskScore.overall_feedback,
+        key_strengths: taskScore.key_strengths,
+        key_weaknesses: taskScore.key_weaknesses,
         priority_improvements: taskScore.priority_improvements,
       },
     };
@@ -610,30 +610,30 @@ export class PracticeService {
       select: { contentJson: true },
     });
     if (!skillContent) throw new NotFoundException('Skill content not found');
-   
+
     const content = skillContent.contentJson as any;
-    const hint    = this.extractHint(content, questionId);
+    const hint = this.extractHint(content, questionId);
     if (!hint) throw new NotFoundException(`No hint found for questionId: ${questionId}`);
-   
+
     return {
       questionId,
       skillContentId,
-      hints:            hint.hints,
+      hints: hint.hints,
       grammar_features: hint.grammar_features ?? null,
     };
   }
-   
+
   async getSpeakingSample(
     skillContentId: string,
-    questionId:     string,
-    band:           number,
-    userId:         string,
+    questionId: string,
+    band: number,
+    userId: string,
   ) {
     // 1. validate band
     if (![5, 6, 7, 8, 9].includes(band)) {
       throw new BadRequestException('Band must be one of: 5, 6, 7, 8, 9');
     }
-   
+
     // 2. check sample exists
     const sample = await this.prisma.speakingSample.findUnique({
       where: {
@@ -643,7 +643,7 @@ export class PracticeService {
     if (!sample) {
       throw new NotFoundException(`No sample found for questionId: ${questionId}, band: ${band}`);
     }
-   
+
     // 3. check if user already has access — no charge if so
     const existingAccess = await this.prisma.speakingSampleAccess.findUnique({
       where: { userId_sampleId: { userId, sampleId: sample.id } },
@@ -651,7 +651,7 @@ export class PracticeService {
     if (existingAccess) {
       return this.formatSampleResponse(sample, { charged: false });
     }
-   
+
     // 4. deduct 1 credit atomically
     const userCredit = await this.prisma.userCredit.findUnique({ where: { userId } });
     if (!userCredit || userCredit.balance < 1) {
@@ -659,7 +659,7 @@ export class PracticeService {
         'Insufficient credits. Please purchase more credits to view sample answers.',
       );
     }
-   
+
     // 5. deduct + create access + log transaction — all in one transaction
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -670,29 +670,29 @@ export class PracticeService {
             'Insufficient credits. Please purchase more credits to view sample answers.',
           );
         }
-   
+
         const transaction = await tx.creditTransaction.create({
           data: {
             userId,
-            type:         'SPEND',
-            amount:       -1,
+            type: 'SPEND',
+            amount: -1,
             balanceBefore: credit.balance,
-            balanceAfter:  credit.balance - 1,
-            description:  `Sample answer: ${questionId} band ${band}`,
-            referenceId:  sample.id,
-            status:       'COMPLETED',
+            balanceAfter: credit.balance - 1,
+            description: `Sample answer: ${questionId} band ${band}`,
+            referenceId: sample.id,
+            status: 'COMPLETED',
           },
         });
-   
+
         await tx.userCredit.update({
           where: { userId },
-          data:  { balance: { decrement: 1 } },
+          data: { balance: { decrement: 1 } },
         });
-   
+
         await tx.speakingSampleAccess.create({
           data: {
             userId,
-            sampleId:      sample.id,
+            sampleId: sample.id,
             transactionId: transaction.id,
           },
         });
@@ -701,7 +701,7 @@ export class PracticeService {
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to process credit deduction');
     }
-   
+
     return this.formatSampleResponse(sample, { charged: true });
   }
 
@@ -729,7 +729,7 @@ export class PracticeService {
 
   async getAllSkills(query: GetSkillsQueryDto) {
     const { skillType, page = 1, limit = 20 } = query;
-    const skip  = (page - 1) * limit;
+    const skip = (page - 1) * limit;
     const where = skillType ? { skillType: { name: skillType } } : {};
 
     const [skillTests, total] = await this.prisma.$transaction([
@@ -740,11 +740,11 @@ export class PracticeService {
         select: {
           skillContentId: true,
           numberOfVisits: true,
-          skillType:          { select: { name: true } },
+          skillType: { select: { name: true } },
           practiceTestSkills: {
             select: {
               practiceTestId: true,
-              practiceTest:   { select: { title: true } },
+              practiceTest: { select: { title: true } },
             },
           },
         },
@@ -754,12 +754,12 @@ export class PracticeService {
 
     return {
       data: skillTests.map((st) => ({
-        skillType:      st.skillType.name,
+        skillType: st.skillType.name,
         skillContentId: st.skillContentId,
         numberOfVisits: st.numberOfVisits,
-        practiceTests:  st.practiceTestSkills.map((pts) => ({
+        practiceTests: st.practiceTestSkills.map((pts) => ({
           practiceTestId: pts.practiceTestId,
-          title:          pts.practiceTest.title,
+          title: pts.practiceTest.title,
         })),
       })),
       meta: this.buildMeta(total, page, limit),
@@ -781,14 +781,14 @@ export class PracticeService {
 
     return {
       practiceTestId: practiceTest.id,
-      title:          practiceTest.title,
-      skills:         practiceTest.practiceTestSkills.map(({ skillTest }) => ({
-        skillTestId:    skillTest.id,
-        skillType:      skillTest.skillType.name,
-        audioUrl:       skillTest.skillContent.audioUrl ?? null,
-        source:         skillTest.skillContent.source,
-        createdAt:      skillTest.skillContent.createdAt,
-        content:        this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
+      title: practiceTest.title,
+      skills: practiceTest.practiceTestSkills.map(({ skillTest }) => ({
+        skillTestId: skillTest.id,
+        skillType: skillTest.skillType.name,
+        audioUrl: skillTest.skillContent.audioUrl ?? null,
+        source: skillTest.skillContent.source,
+        createdAt: skillTest.skillContent.createdAt,
+        content: this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
       })),
     };
   }
@@ -797,24 +797,24 @@ export class PracticeService {
     const skillContent = await this.prisma.skillContent.findUnique({
       where: { id: skillContentId },
       select: {
-        id:        true,
-        audioUrl:  true,
-        source:    true,
+        id: true,
+        audioUrl: true,
+        source: true,
         createdAt: true,
         contentJson: true,
-        skillType:   { select: { name: true } },
-        skillTests:  { select: { id: true } },
+        skillType: { select: { name: true } },
+        skillTests: { select: { id: true } },
       },
     });
     if (!skillContent) throw new NotFoundException(`SkillContent not found`);
 
     return {
       skillContentId: skillContent.id,
-      skillType:      skillContent.skillType.name,
-      audioUrl:       skillContent.audioUrl ?? null,
-      source:         skillContent.source,
-      createdAt:      skillContent.createdAt,
-      content:        this.stripAnswers(skillContent.contentJson as ContentJson),
+      skillType: skillContent.skillType.name,
+      audioUrl: skillContent.audioUrl ?? null,
+      source: skillContent.source,
+      createdAt: skillContent.createdAt,
+      content: this.stripAnswers(skillContent.contentJson as ContentJson),
     };
   }
 
@@ -838,21 +838,22 @@ export class PracticeService {
     if (test.userId !== userId) throw new UnauthorizedException('This test does not belong to you');
 
     return {
-      testId:         test.id,
-      status:         test.status,
-      startedAt:      test.startedAt,
+      testId: test.id,
+      status: test.status,
+      startedAt: test.startedAt,
       practiceTestId: test.practiceTestId,
-      title:          test.practiceTest.title,
-      skills:         test.practiceTest.practiceTestSkills.map(({ skillTest }) => {
+      title: test.practiceTest.title,
+      skills: test.practiceTest.practiceTestSkills.map(({ skillTest }) => {
         const attempt = test.skillAttempts.find((a) => a.skillTestId === skillTest.id);
         return {
-          skillTestId:   skillTest.id,
-          skillType:     skillTest.skillType.name,
-          audioUrl:      skillTest.skillContent.audioUrl ?? null,
-          source:        skillTest.skillContent.source,
-          attemptId:     attempt?.id ?? null,
+          skillTestId: skillTest.id,
+          skillContentId: skillTest.skillContentId,
+          skillType: skillTest.skillType.name,
+          audioUrl: skillTest.skillContent.audioUrl ?? null,
+          source: skillTest.skillContent.source,
+          attemptId: attempt?.id ?? null,
           attemptStatus: !attempt ? 'NOT_STARTED' : attempt.submittedAt ? 'SUBMITTED' : 'IN_PROGRESS',
-          content:       this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
+          content: this.stripAnswers(skillTest.skillContent.contentJson as ContentJson),
         };
       }),
     };
@@ -863,25 +864,25 @@ export class PracticeService {
   // ================================================================
 
   private async evaluateWithClaude(
-    task:     'task1' | 'task2',
+    task: 'task1' | 'task2',
     question: string,
-    essay:    string,
+    essay: string,
   ): Promise<IELTSScore> {
     const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
     const response = await anthropic.messages.create({
-      model:      'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       system: [
         {
-          type:          'text',
-          text:          IELTS_SYSTEM_PROMPT,
+          type: 'text',
+          text: IELTS_SYSTEM_PROMPT,
           cache_control: { type: 'ephemeral' }, // rubric cached — saves ~65% input cost
         },
       ],
       messages: [
         {
-          role:    'user',
+          role: 'user',
           content: `Task Type: IELTS Writing ${task === 'task1' ? 'Task 1' : 'Task 2'}
 
 Question:
@@ -908,26 +909,26 @@ Return the JSON score object only.`,
     tx: Prisma.TransactionClient | typeof this.prisma = this.prisma,
   ) {
     const test = await tx.test.findUnique({
-      where:   { id: testId },
+      where: { id: testId },
       include: {
-        practiceTest:  { include: { practiceTestSkills: true } },
+        practiceTest: { include: { practiceTestSkills: true } },
         skillAttempts: true,
       },
     });
 
     if (!test || test.status !== 'IN_PROGRESS') return;
 
-    const totalSkills       = test.practiceTest.practiceTestSkills.length;
+    const totalSkills = test.practiceTest.practiceTestSkills.length;
     const submittedAttempts = test.skillAttempts.filter((a) => a.submittedAt);
 
     if (submittedAttempts.length < totalSkills) return;
 
     const totalScore = submittedAttempts.reduce((sum, a) => sum + (a.score ?? 0), 0);
-    const maxScore   = submittedAttempts.reduce((sum, a) => sum + (a.maxScore ?? 0), 0);
+    const maxScore = submittedAttempts.reduce((sum, a) => sum + (a.maxScore ?? 0), 0);
 
     await tx.test.update({
       where: { id: testId },
-      data:  { status: 'COMPLETED', totalScore, maxScore, completedAt: new Date() },
+      data: { status: 'COMPLETED', totalScore, maxScore, completedAt: new Date() },
     });
   }
 
@@ -942,7 +943,7 @@ Return the JSON score object only.`,
   }
 
   private extractCorrectAnswers(content: ContentJson): Map<string, string> {
-    const map    = new Map<string, string>();
+    const map = new Map<string, string>();
     const blocks = [
       ...(content.sections?.flatMap((s) => s.question_blocks) ?? []),
       ...(content.passages?.flatMap((p) => p.question_blocks) ?? []),
@@ -1007,7 +1008,7 @@ Return the JSON score object only.`,
         ...passage,
         question_blocks: passage.question_blocks.map((block) => ({
           ...block,
-          answers:   undefined,
+          answers: undefined,
           questions: block.questions ? strip(block.questions) : undefined,
         })),
       })),
@@ -1042,16 +1043,16 @@ Return the JSON score object only.`,
     }
     return null;
   }
-   
+
   private formatSampleResponse(sample: any, meta: { charged: boolean }) {
     return {
-      sampleId:            sample.id,
-      questionId:          sample.questionId,
-      band:                sample.band,
-      answerText:          sample.answerText,
-      tip:                 sample.tip,
+      sampleId: sample.id,
+      questionId: sample.questionId,
+      band: sample.band,
+      answerText: sample.answerText,
+      tip: sample.tip,
       vocabularyHighlights: sample.vocabularyHighlights,
-      charged:             meta.charged,  // lets frontend know if credit was spent
+      charged: meta.charged,  // lets frontend know if credit was spent
     };
   }
 }
