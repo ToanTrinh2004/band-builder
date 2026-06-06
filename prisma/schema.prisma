@@ -25,6 +25,7 @@ model User {
   userCredit          UserCredit?
   creditTransactions  CreditTransaction[]
   sampleAccesses      SpeakingSampleAccess[]
+  speakingSessions    SpeakingSession[]
 
   @@map("users")
 }
@@ -544,4 +545,26 @@ model GrammarMistake {
   createdAt  DateTime @default(now())
 
   @@map("grammar_mistakes")
+}
+
+// ============================================================
+// SPEAKING AI CALL SESSIONS
+// ============================================================
+
+model SpeakingSession {
+  id            String   @id @default(uuid())
+  userId        String
+  voiceId       String   // "sophia" | "alex" | "david"
+  createdAt     DateTime @default(now())
+  dialogue      Json     // Array<{ sender: "ai" | "user", text: string }>
+  overallBand   Float
+  fluency       Float
+  lexical       Float
+  grammar       Float
+  pronunciation Float
+  corrections   Json     // Array<{ type, original?, correction?, explanation }>
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("speaking_sessions")
 }
