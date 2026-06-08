@@ -13,7 +13,8 @@ import { MeResponseDto } from './dto/me-response.dto';
 export const COOKIE_BASE = {
   httpOnly: true,
   secure: true,
-  sameSite: 'none' as const, // 'none' only if frontend is on a different domain (then add CSRF header check)
+ sameSite: 'lax' as const, // 'none' only if frontend is on a different domain (then add CSRF header check)
+
 };
 
 @Injectable()
@@ -21,7 +22,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   // ─── Token helpers ────────────────────────────────────────────────────────
 
