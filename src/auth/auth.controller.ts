@@ -10,6 +10,7 @@ import { MeResponseDto } from './dto/me-response.dto';
 import { JwtAuthGuard } from './guards/jwt.guard'; // your existing guard
 import { GoogleAuthGuard } from './guards/google.guard';
 import { CurrentUser } from './decorators/current-user.decorator'; // @Req().user shorthand
+import { CsrfGuard } from './guards/csrf.guard';
 
 const THROTTLE = { short: { ttl: 60000, limit: 5 } };
 
@@ -75,6 +76,7 @@ export class AuthController {
 
   @Throttle(THROTTLE)
   @Post('refresh')
+  @UseGuards(CsrfGuard)
   @ApiCookieAuth('refreshToken')
   @ApiOperation({ summary: 'Rotate tokens using httpOnly refresh-token cookie' })
   @ApiResponse({ status: 200, type: AuthTokensDto })
@@ -104,7 +106,7 @@ export class AuthController {
 
   @Throttle(THROTTLE)
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CsrfGuard, JwtAuthGuard)
   @ApiCookieAuth('accessToken')
   @ApiOperation({ summary: 'Logout — revokes refresh token and clears cookies' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
