@@ -1,293 +1,76 @@
-# 🎸 Band Builder — Backend Service
+# Band Builder
 
-> **A smart platform for musicians to discover, connect, and form bands.** Built with NestJS, Prisma ORM, PostgreSQL, and powered by AI assistance via the Anthropic Claude SDK.
+**Band Builder** is a backend platform for IELTS learning and practice — not a music platform. The name refers to *IELTS band score*, the 0–9 scale used to grade IELTS test takers. The app helps users build up their band score through full-length practice tests, AI-powered writing evaluation, AI speaking practice, and structured vocabulary/grammar materials.
 
----
+## What it does
 
-## 📌 Table of Contents
+- **Four-skill practice tests** — Listening, Reading, Writing, Speaking content modeled on real IELTS test structure (e.g. Cambridge practice test format), grouped into full practice tests users can attempt end-to-end.
+- **AI Writing evaluation** — Task 1 and Task 2 essays are scored against the official IELTS band descriptors (Task Achievement/Response, Coherence & Cohesion, Lexical Resource, Grammatical Range) using the Anthropic Claude API, with rationale, examples, and improvement suggestions per criterion.
+- **AI Speaking sessions** — simulated speaking test sessions with an AI examiner voice, scored on fluency, lexical resource, grammar, and pronunciation, with per-utterance corrections.
+- **Listening/Reading AI explanations** — on-demand AI-generated explanations for why an answer is correct, credit-gated.
+- **Speaking sample bank** — benchmark answers at bands 5–9 for common speaking questions, unlocked via credits.
+- **Credit system** — in-app credits purchased via VietQR/SePay (Vietnamese bank transfer QR payment), spent on AI features like sample answers and explanations.
+- **Study materials** — topic-based vocabulary lists, band-specific vocabulary (Listening/Reading and Speaking/Writing), grammar reference sections, common mistake corrections, and pronunciation practice with word/sentence-level audio timing.
+- **Dictionary & translation caching** — cached word lookups and sentence translations to avoid repeated external API calls.
 
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [API Documentation](#api-documentation)
-- [Database](#database)
-- [Docker Deployment](#docker-deployment)
-- [CI/CD](#cicd)
-- [License](#license)
+## Tech stack
 
----
+- **Framework**: NestJS (TypeScript)
+- **Database**: PostgreSQL via Prisma ORM
+- **Cache/session**: Redis
+- **AI**: Anthropic Claude API (writing evaluation, speaking sessions, explanations)
+- **Auth**: Google OAuth2, JWT with refresh token rotation
+- **Payments**: SePay / VietQR (Vietnamese QR bank transfer)
+- **Infra**: Docker, Docker Compose, deployed on AWS EC2
+- **CI/CD**: GitHub Actions
 
-## Overview
-
-**Band Builder** is a backend REST API for a musician collaboration platform. It enables users to create profiles, showcase their skills, find other musicians, and build bands together. The platform integrates **AI-powered features** via the Anthropic Claude SDK to enhance the band-matching and recommendation experience.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | [NestJS](https://nestjs.com/) v11 (TypeScript) |
-| Database | PostgreSQL 16 |
-| ORM | [Prisma](https://www.prisma.io/) v7 |
-| Authentication | JWT + Google OAuth 2.0 (Passport.js) |
-| AI Integration | [Anthropic Claude SDK](https://www.anthropic.com/) (`@anthropic-ai/sdk`) |
-| Media Storage | Cloudinary (via multer-storage-cloudinary) |
-| API Docs | Swagger (`@nestjs/swagger`) |
-| Rate Limiting | `@nestjs/throttler` |
-| Containerization | Docker + Docker Compose |
-| Node.js Runtime | Node.js 20 Alpine |
-| DB Admin UI | pgAdmin 4 |
-
----
-
-## Architecture
-
-```
-Client (Web / Mobile)
-        │
-        ▼
-  NestJS REST API  ──────── Swagger UI (/api/docs)
-        │
-        ├──────────────────► PostgreSQL 16
-        │                     └── Prisma ORM (migrations + queries)
-        │
-        ├──────────────────► Anthropic Claude API
-        │                     └── AI-powered band matching / recommendations
-        │
-        ├──────────────────► Cloudinary
-        │                     └── Profile photos, media uploads
-        │
-        └──────────────────► Google OAuth 2.0
-                              └── Social login via Passport.js
-```
-
----
-
-## Features
-
-- 🔐 **Dual Authentication** — JWT-based local login/register + Google OAuth 2.0 social login
-- 🔒 **Security** — bcrypt password hashing, cookie-based token management
-- 🤖 **AI-Powered Features** — Integrated with Anthropic Claude for intelligent band matching and music recommendations
-- 🎵 **Band & Musician Profiles** — Full CRUD for user profiles, skills, genres, and instruments
-- 🖼️ **Media Uploads** — Profile and band photos uploaded directly to Cloudinary via Multer
-- 📄 **Swagger API Docs** — Auto-generated, interactive API documentation
-- ⚡ **Rate Limiting** — Built-in throttling to protect API endpoints
-- 🐳 **Docker Compose** — One-command local development with PostgreSQL + pgAdmin
-- 🔄 **Auto DB Migrations** — Prisma migrations run automatically on container startup
-- ✅ **CI/CD Pipeline** — GitHub Actions workflows for automated testing and deployment
-- 🛡️ **Request Validation** — DTO validation with `class-validator` and `class-transformer`
-
----
-
-## Project Structure
-
-```
-band-builder/
-├── src/                        # NestJS application source
-│   ├── app.module.ts           # Root module
-│   ├── main.ts                 # Entry point (port 3000)
-│   └── [feature modules]/      # Auth, Users, Bands, AI, Media, etc.
-├── prisma/                     # Database schema & migrations
-│   └── schema.prisma           # Prisma data models
-├── test/                       # E2E and unit tests
-├── .github/workflows/          # GitHub Actions CI/CD pipelines
-├── Dockerfile                  # Multi-stage production build
-├── docker-compose.yml          # Local dev: App + PostgreSQL + pgAdmin
-├── prisma.config.ts            # Prisma runtime configuration
-└── package.json
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js >= 20
-- npm
-- Docker & Docker Compose (recommended)
-- PostgreSQL (if running without Docker)
-
-### Installation
+## Project setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/ToanTrinh2004/band-builder.git
-cd band-builder
-
-# Install dependencies
 npm install
 ```
 
-### Generate Prisma Client
+Copy `.env.example` to `.env` and fill in the required values (database URL, JWT secret, Google OAuth credentials, Anthropic API key, SePay/VietQR credentials, Cloudinary credentials).
+
+## Running locally
 
 ```bash
-npx prisma generate
-```
+# development
+npm run start
 
-### Running with Docker (Recommended)
-
-The easiest way to get started — spins up the app, PostgreSQL, and pgAdmin together:
-
-```bash
-docker-compose up --build
-```
-
-| Service | URL |
-|---|---|
-| API Server | http://localhost:3000 |
-| Swagger Docs | http://localhost:3000/api |
-| pgAdmin | http://localhost:5050 |
-
-pgAdmin default credentials: `admin@mail.com` / `admin123`
-
-### Running Locally (without Docker)
-
-```bash
-# Run database migrations
-npx prisma migrate dev
-
-# Development mode (hot reload)
+# watch mode
 npm run start:dev
 
-# Production mode
+# production build
+npm run build
 npm run start:prod
 ```
 
-### Running Tests
+## Running with Docker
 
 ```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
+docker compose up -d --build
 ```
 
----
-
-## Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-# App
-PORT=3000
-NODE_ENV=development
-
-# Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres
-
-# JWT
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=7d
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
-
-# Anthropic AI
-ANTHROPIC_API_KEY=your_anthropic_api_key
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
----
-
-## API Documentation
-
-Swagger UI is available at **`http://localhost:3000/api`** when the server is running.
-
-Key API groups:
-
-| Group | Description |
-|---|---|
-| `Auth` | Local register/login, Google OAuth, token refresh |
-| `Users` | Musician profiles, skills, instruments, genres |
-| `Bands` | Create and manage bands, send/accept invitations |
-| `AI` | AI-powered band recommendations and matching |
-| `Media` | Upload profile and band photos |
-
----
+This starts the Postgres database and the NestJS app. Prisma migrations run automatically on container start (`prisma migrate deploy`).
 
 ## Database
 
-This project uses **Prisma ORM** with **PostgreSQL 16**.
+Schema is managed with Prisma. To apply migrations manually:
 
 ```bash
-# Create and apply a new migration
-npx prisma migrate dev --name migration_name
-
-# Apply migrations in production
-npx prisma migrate deploy
-
-# Open Prisma Studio (visual DB browser)
-npx prisma studio
-
-# Reset database (dev only)
-npx prisma migrate reset
+npx prisma migrate dev      # development
+npx prisma migrate deploy   # production
 ```
 
-The schema is defined in `prisma/schema.prisma`. Migrations run automatically when using Docker Compose.
-
----
-
-## Docker Deployment
-
-### Services in `docker-compose.yml`
-
-| Service | Image | Port |
-|---|---|---|
-| `app` | Local build | 3000 |
-| `postgres` | postgres:16 | 5432 |
-| `pgadmin` | dpage/pgadmin4 | 5050 |
-
-The app container automatically runs `prisma migrate deploy` before starting.
-
-### Production Docker Build
+## Tests
 
 ```bash
-# Build production image
-docker build -t band-builder .
-
-# Run container
-docker run -p 3000:3000 --env-file .env band-builder
+npm run test        # unit tests
+npm run test:e2e    # e2e tests
+npm run test:cov    # coverage
 ```
-
-The Dockerfile uses a **two-stage build**:
-- **Stage 1 (builder):** Installs all deps, generates Prisma client, compiles TypeScript
-- **Stage 2 (production):** Copies only the compiled `dist/` and production deps for a lean image
-
----
-
-## CI/CD
-
-GitHub Actions workflows are configured in `.github/workflows/`. The pipeline handles:
-
-- Automated testing on pull requests
-- Build verification on push to `master`
-- Deployment pipeline (configure target environment in secrets)
-
----
 
 ## License
 
-This project is private and unlicensed. All rights reserved © 2024 ToanTrinh2004.
-
----
-
-<p align="center">
-  Built with ❤️ using NestJS · Prisma · PostgreSQL · Anthropic Claude · Google OAuth
-</p>
+Private project. All rights reserved.
