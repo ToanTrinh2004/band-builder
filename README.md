@@ -17,7 +17,6 @@
 
 - **Framework**: NestJS (TypeScript)
 - **Database**: PostgreSQL via Prisma ORM
-- **Cache/session**: Redis
 - **AI**: Anthropic Claude API (writing evaluation, speaking sessions, explanations)
 - **Auth**: Google OAuth2, JWT with refresh token rotation
 - **Payments**: SePay / VietQR (Vietnamese QR bank transfer)
