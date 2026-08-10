@@ -2,7 +2,9 @@ const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL,
+});
 
 // Đặt 4 file JSON trong thư mục con "seed-data" cùng cấp với script:
 // listening.json, reading.json, writing.json, speaking.json
