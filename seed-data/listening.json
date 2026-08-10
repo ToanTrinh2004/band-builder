@@ -1,0 +1,467 @@
+{
+    "sections": [
+      {
+        "context": "social_conversation",
+        "section": 1,
+        "audioUrl": "https://res.cloudinary.com/ddne6zhdf/video/upload/v1774536129/audio/ctpej7liethxzex5id3p.mp3",
+        "speakers": [
+          "Receptionist",
+          "Woman",
+          "Police Officer"
+        ],
+        "description": "A woman calls the City Police Station to report a stolen briefcase. A police officer takes details.",
+        "question_blocks": [
+          {
+            "questions": [
+              {
+                "id": "L1Q1",
+                "note": "Image-based options",
+                "text": "What does her briefcase look like?",
+                "answer": "A",
+                "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774522998/images/vhdfzudcqypwkeup4mgf.png",
+                "number": 1,
+                "options": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ]
+              },
+              {
+                "id": "L1Q2",
+                "note": "Image-based options",
+                "text": "Which picture shows the distinguishing features?",
+                "answer": "C",
+                "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774532725/images/jdby84run1fv3duiyuty.png",
+                "number": 2,
+                "options": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ]
+              },
+              {
+                "id": "L1Q3",
+                "text": "What did she have inside her briefcase?",
+                "answer": "D",
+                "number": 3,
+                "options": [
+                  "A: wallet, pens and novel",
+                  "B: papers and wallet",
+                  "C: pens and novel",
+                  "D: papers, pens and novel"
+                ]
+              },
+              {
+                "id": "L1Q4",
+                "note": "Image-based options",
+                "text": "Where was she standing when she lost her briefcase?",
+                "answer": "D",
+                "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774532790/images/mxvc0zrlkvf3dpmealrf.png",
+                "number": 4,
+                "options": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ]
+              },
+              {
+                "id": "L1Q5",
+                "note": "Image-based options",
+                "text": "What time was it when she lost her briefcase?",
+                "answer": "C",
+                "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774532842/images/adnekunfwzxcyqbttfei.png",
+                "number": 5,
+                "options": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ]
+              }
+            ],
+            "instruction": "Circle the appropriate letter.",
+            "question_type": "multiple_choice",
+            "questions_range": "1-5"
+          },
+          {
+            "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774532882/images/exbzqogtmxlkzurfrlwu.png",
+            "questions": [
+              {
+                "id": "L1Q6",
+                "text": "Name: Mary ___",
+                "answer": "Prescott",
+                "number": 6
+              },
+              {
+                "id": "L1Q7",
+                "text": "Address: Flat 2, ___ [number]",
+                "answer": "41",
+                "number": 7
+              },
+              {
+                "id": "L1Q8",
+                "text": "Address: ___ Road, Canterbury",
+                "answer": "Fountain",
+                "number": 8
+              },
+              {
+                "id": "L1Q9",
+                "text": "Telephone: ___",
+                "answer": "752239",
+                "number": 9
+              },
+              {
+                "id": "L1Q10",
+                "text": "Estimated value of lost item: £___",
+                "answer": "65",
+                "number": 10
+              }
+            ],
+            "form_title": "PERSONAL DETAILS FORM",
+            "instruction": "Complete the form. Write NO MORE THAN THREE WORDS for each answer.",
+            "question_type": "form_completion",
+            "questions_range": "6-10"
+          }
+        ]
+      },
+      {
+        "context": "social_monologue",
+        "section": 2,
+        "audioUrl": "https://res.cloudinary.com/ddne6zhdf/video/upload/v1774536193/audio/ltmij9xv3visb0m3czsi.mp3",
+        "speakers": [
+          "Newsreader"
+        ],
+        "description": "A news broadcast covering drought relief funds and a plane emergency landing.",
+        "question_blocks": [
+          {
+            "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774532962/images/osor6d8lz72wui8ydx6s.png",
+            "answers": [
+              "E",
+              "F",
+              "H"
+            ],
+            "options": [
+              "A: Rivers flood in the north",
+              "B: Money promised for drought victims (EXAMPLE)",
+              "C: Nurses on strike in Melbourne",
+              "D: Passengers rescued from ship",
+              "E: Passengers rescued from plane",
+              "F: Bus and train drivers national strike threat",
+              "G: Teachers demand more pay",
+              "H: New uniform for QANTAS staff",
+              "I: National airports under new management"
+            ],
+            "instruction": "Tick the THREE other items which are mentioned in the news headlines.",
+            "question_type": "matching",
+            "questions_range": "11-13"
+          },
+          {
+            "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774533585/images/wro8yfgoxt8rx9ogo6n3.png",
+            "questions": [
+              {
+                "id": "L2Q14",
+                "text": "The Government plans to give $___ to assist the farmers.",
+                "answer": "250 million",
+                "number": 14
+              },
+              {
+                "id": "L2Q15",
+                "text": "Money was to be spent on improving Sydney's ___ but has been re-allocated.",
+                "answer": "roads / road system",
+                "number": 15
+              },
+              {
+                "id": "L2Q16",
+                "text": "Farmers say the money will not help because it is ___.",
+                "answer": "too late",
+                "number": 16
+              },
+              {
+                "id": "L2Q17",
+                "text": "An aeroplane carrying a group of ___ was forced to land.",
+                "answer": "school children / boys",
+                "number": 17
+              },
+              {
+                "id": "L2Q18",
+                "text": "Forced to land just ___ minutes after take-off.",
+                "answer": "3",
+                "number": 18
+              },
+              {
+                "id": "L2Q19",
+                "text": "The passengers were rescued by ___.",
+                "answer": "boats / pleasure craft",
+                "number": 19
+              },
+              {
+                "id": "L2Q20",
+                "text": "The passengers thanked the ___ for saving their lives.",
+                "answer": "pilot",
+                "number": 20
+              },
+              {
+                "id": "L2Q21",
+                "text": "Unfortunately they lost their ___.",
+                "answer": "musical instruments",
+                "number": 21
+              }
+            ],
+            "instruction": "Complete the notes below. Write NO MORE THAN THREE WORDS.",
+            "question_type": "note_completion",
+            "questions_range": "14-21"
+          }
+        ]
+      },
+      {
+        "context": "academic_conversation",
+        "section": 3,
+        "audioUrl": "https://res.cloudinary.com/ddne6zhdf/video/upload/v1774536248/audio/cjexpnwxkowoov77athv.mp3",
+        "speakers": [
+          "Male student",
+          "Female lecturer"
+        ],
+        "description": "A new male student speaks with a female lecturer about Economics I course requirements.",
+        "question_blocks": [
+          {
+            "questions": [
+              {
+                "id": "L3Q22",
+                "text": "The orientation meeting",
+                "answer": "A",
+                "number": 22,
+                "options": [
+                  "A: took place recently",
+                  "B: took place last term",
+                  "C: will take place tomorrow",
+                  "D: will take place next week"
+                ]
+              },
+              {
+                "id": "L3Q23",
+                "text": "Attendance at lectures is",
+                "answer": "B",
+                "number": 23,
+                "options": [
+                  "A: optional after 4 pm",
+                  "B: closely monitored",
+                  "C: difficult to enforce",
+                  "D: sometimes unnecessary"
+                ]
+              },
+              {
+                "id": "L3Q24",
+                "text": "Tutorials take place",
+                "answer": "C",
+                "number": 24,
+                "options": [
+                  "A: every morning",
+                  "B: twice a week",
+                  "C: three mornings a week",
+                  "D: three afternoons a week"
+                ]
+              },
+              {
+                "id": "L3Q25",
+                "text": "The lecturer's name is",
+                "answer": "A",
+                "number": 25,
+                "options": [
+                  "A: Roberts",
+                  "B: Rawson",
+                  "C: Rogers",
+                  "D: Robertson"
+                ]
+              }
+            ],
+            "instruction": "Circle the appropriate letter.",
+            "question_type": "multiple_choice",
+            "questions_range": "22-25"
+          },
+          {
+            "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774533716/images/tzygywfu6m4tbd4lbpmw.png",
+            "questions": [
+              {
+                "id": "L3Q26",
+                "text": "Tutorial paper: Students must ___ for 25 minutes.",
+                "answer": "talk / give a talk",
+                "number": 26
+              },
+              {
+                "id": "L3Q27",
+                "text": "Students must also ___.",
+                "answer": "write up work",
+                "number": 27
+              },
+              {
+                "id": "L3Q28",
+                "text": "Essay topic: Usually ___.",
+                "answer": "can choose",
+                "number": 28
+              },
+              {
+                "id": "L3Q29",
+                "text": "Type of exam: ___.",
+                "answer": "open book",
+                "number": 29
+              },
+              {
+                "id": "L3Q30",
+                "text": "Library: Important books are in ___.",
+                "answer": "closed reserve",
+                "number": 30
+              },
+              {
+                "id": "L3Q31",
+                "text": "Focus of course: Focus on ___.",
+                "answer": "vocational subjects / preparing for work",
+                "number": 31
+              }
+            ],
+            "instruction": "Complete the notes below using NO MORE THAN THREE WORDS.",
+            "question_type": "note_completion",
+            "questions_range": "26-31"
+          }
+        ]
+      },
+      {
+        "context": "academic_monologue",
+        "section": 4,
+        "audioUrl": "https://res.cloudinary.com/ddne6zhdf/video/upload/v1774536296/audio/p6hzmkh63gdweb9v0rai.mp3",
+        "speakers": [
+          "Female lecturer"
+        ],
+        "description": "University open day mini-lecture on Faculty of Arts and Social Sciences — Economics I.",
+        "question_blocks": [
+          {
+            "questions": [
+              {
+                "id": "L4Q32",
+                "text": "The speaker works within the Faculty of",
+                "answer": "B",
+                "number": 32,
+                "options": [
+                  "A: Science and Technology",
+                  "B: Arts and Social Sciences",
+                  "C: Architecture",
+                  "D: Law"
+                ]
+              },
+              {
+                "id": "L4Q33",
+                "text": "The Faculty consists firstly of",
+                "answer": "C",
+                "number": 33,
+                "options": [
+                  "A: subjects",
+                  "B: degrees",
+                  "C: divisions",
+                  "D: departments"
+                ]
+              }
+            ],
+            "instruction": "Circle the appropriate letter.",
+            "question_type": "multiple_choice",
+            "questions_range": "32-33"
+          },
+          {
+            "imgUrl": "https://res.cloudinary.com/ddne6zhdf/image/upload/v1774533783/images/xg1l4bn7rxrq15raili7.png",
+            "questions": [
+              {
+                "id": "L4Q34",
+                "text": "Subjects in first semester: psychology, sociology, ___ and ___.",
+                "answer": "history and economics",
+                "number": 34
+              },
+              {
+                "id": "L4Q35",
+                "text": "Students may have problems with ___.",
+                "answer": "meeting deadlines (for essays)",
+                "number": 35
+              },
+              {
+                "id": "L4Q36",
+                "text": "Students may also have problems with ___.",
+                "answer": "attendance",
+                "number": 36
+              }
+            ],
+            "instruction": "Complete the notes in NO MORE THAN THREE WORDS.",
+            "question_type": "note_completion",
+            "questions_range": "34-36"
+          },
+          {
+            "questions": [
+              {
+                "id": "L4Q37",
+                "text": "The speaker says students can visit her",
+                "answer": "B",
+                "number": 37,
+                "options": [
+                  "A: every morning",
+                  "B: some mornings",
+                  "C: mornings only",
+                  "D: Friday morning"
+                ]
+              },
+              {
+                "id": "L4Q38",
+                "text": "According to the speaker, a tutorial",
+                "answer": "C",
+                "number": 38,
+                "options": [
+                  "A: is a type of lecture",
+                  "B: is less important than a lecture",
+                  "C: provides a chance to share views",
+                  "D: provides an alternative to groupwork"
+                ]
+              },
+              {
+                "id": "L4Q39",
+                "text": "When writing essays, the speaker advises students to",
+                "answer": "B",
+                "number": 39,
+                "options": [
+                  "A: research their work well",
+                  "B: name the books they have read",
+                  "C: share work with their friends",
+                  "D: avoid using other writers' ideas"
+                ]
+              },
+              {
+                "id": "L4Q40",
+                "text": "The speaker thinks that plagiarism is",
+                "answer": "D",
+                "number": 40,
+                "options": [
+                  "A: a common problem",
+                  "B: an acceptable risk",
+                  "C: a minor concern",
+                  "D: a serious offence"
+                ]
+              },
+              {
+                "id": "L4Q41",
+                "text": "The speaker's aims are to",
+                "answer": "A",
+                "number": 41,
+                "options": [
+                  "A: introduce students to university expectations",
+                  "B: introduce students to the members of staff",
+                  "C: warn students about the difficulties of studying",
+                  "D: guide students round the university"
+                ]
+              }
+            ],
+            "instruction": "Circle the appropriate letter.",
+            "question_type": "multiple_choice",
+            "questions_range": "37-41"
+          }
+        ]
+      }
+    ],
+    "total_questions": 41
+  }
